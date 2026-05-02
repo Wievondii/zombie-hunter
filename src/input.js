@@ -5,6 +5,7 @@ export const keys = {};
 export let mouseX = IW / 2, mouseY = IH / 2;
 export let mouseDown = false, mouseJustPressed = false;
 export let joyActive = false, joyDx = 0, joyDy = 0;
+export let mouseWheelDelta = 0;
 
 export function initInput(canvas) {
   function mapMouse(clientX, clientY) {
@@ -43,6 +44,12 @@ export function initInput(canvas) {
     mouseDown = true; mouseJustPressed = true;
   }, { passive: false });
   canvas.addEventListener('touchend', (e) => { e.preventDefault(); mouseDown = false; }, { passive: false });
+
+  // Mouse wheel
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    mouseWheelDelta += e.deltaY;
+  }, { passive: false });
 }
 
-export function resetJustPressed() { mouseJustPressed = false; }
+export function resetJustPressed() { mouseJustPressed = false; mouseWheelDelta = 0; }

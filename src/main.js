@@ -1,7 +1,7 @@
 import { IW, IH, GAME_WIDTH, GAME_HEIGHT, ZOMBIES_PER_WAVE, PI2, recalcSize, GRID_CELL, GRID_COLS, GRID_ROWS } from './config.js';
 import { saveData, loadData, dist2, randRange } from './utils.js';
 import { audio } from './audio.js';
-import { keys, mouseX, mouseY, mouseDown, mouseJustPressed, initInput, resetJustPressed } from './input.js';
+import { keys, mouseX, mouseY, mouseDown, mouseJustPressed, mouseWheelDelta, initInput, resetJustPressed } from './input.js';
 import { Player, turrets, updateTurrets, drawTurrets } from './entities/player.js';
 import { zombies, Zombie, spawnZombie, cleanupZombies, clearZombies } from './entities/zombie.js';
 import { bullets, acidProjectiles, updateBullet, updateAcid, drawBullet, drawAcid, cleanupBullets, clearBullets } from './entities/bullet.js';
@@ -18,7 +18,7 @@ import { updateKillFeed, addKillFeed } from './systems/killfeed.js';
 import { drawCrosshair } from './renderer.js';
 import { TileMap } from './map/TileMap.js';
 import { drawHUD } from './ui/hud.js';
-import { drawShopUI, handleShopClick } from './ui/shop.js';
+import { drawShopUI, handleShopClick, scrollShop } from './ui/shop.js';
 import { drawStartUI, drawGameOverUI, drawPauseUI, handlePauseClick, drawSettingsUI, handleSettingsClick, drawPerkSelectUI, handlePerkClick, generatePerkChoices, pushFps, drawPerfMonitor, showPerfMonitor, setMenuMouse } from './ui/menus.js';
 import { GameFlow, FlowState } from './flow/GameFlow.js';
 import { drawTitleScreen, drawCharSelect, drawStageSelect, drawResultsScreen } from './flow/screens.js';
@@ -187,6 +187,7 @@ function gameLoop(timestamp) {
   updateEffects(dt);
   transition.update(dt);
   achievements.update(dt);
+  if (flow.state === FlowState.SHOP && mouseWheelDelta !== 0) scrollShop(mouseWheelDelta);
   render();
   resetJustPressed();
 }

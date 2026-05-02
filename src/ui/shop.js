@@ -6,11 +6,16 @@ import { spawnFloatingText } from '../systems/particles.js';
 import { drawText, FONT } from './TextRenderer.js';
 
 export let shopLayoutData = null;
+let shopScrollY = 0;
+
+export function scrollShop(delta) {
+  shopScrollY += delta;
+}
 
 export function drawShopUI(c, player) {
   c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(0, 0, IW, IH);
   const pW = Math.min(420, IW * 0.6);
-  const pH = Math.min(380, IH * 0.8);
+  const pH = Math.min(380, IH * 0.85);
   const pX = IW / 2 - pW / 2;
   const pY = IH / 2 - pH / 2;
 
@@ -22,10 +27,23 @@ export function drawShopUI(c, player) {
   drawText(c, `持有金币: ${player.coins}`, IW / 2, pY + pH * 0.12, { size: FONT.BODY(), color: '#FFD700', align: 'center', bold: true });
 
   const iStartY = pY + pH * 0.18;
-  const iH = Math.max(30, pH * 0.09);
+  const iH = Math.max(28, pH * 0.08);
+  const itemsAreaTop = iStartY;
+  const itemsAreaBottom = pY + pH - pH * 0.08;
+  const visibleH = itemsAreaBottom - itemsAreaTop;
+  const totalContentH = SHOP_ITEMS.length * iH;
+  const maxScroll = Math.max(0, totalContentH - visibleH);
+  shopScrollY = Math.max(0, Math.min(shopScrollY, maxScroll));
+
+  // Clip to items area
+  c.save();
+  c.beginPath();
+  c.rect(pX + 8, itemsAreaTop, pW - 16, visibleH);
+  c.clip();
 
   SHOP_ITEMS.forEach((item, idx) => {
-    const iy = iStartY + idx * iH;
+    const iy = iStartY + idx * iH - shopScrollY;
+    if (iy + iH < itemsAreaTop || iy > itemsAreaBottom) return;
     const alreadyOwned = item.type === 'weapon' && player.weapons.includes(item.weaponKey);
     const canAfford = player.coins >= item.price;
     const isMaxAmmo = item.type === 'ammo' && player.ammo >= player.maxAmmo;
@@ -59,18 +77,37 @@ export function drawShopUI(c, player) {
     else drawText(c, `💰 ${item.price}`, statusX, iy + iH / 2, { size: FONT.SMALL(), color: canAfford ? '#FFD700' : '#FF4444', align: 'right', baseline: 'middle', bold: true });
   });
 
-  drawText(c, '按 E 关闭 | 点击购买', IW / 2, pY + pH - pH * 0.04, {
+  c.restore();
+
+  // Scroll indicator
+  if (maxScroll > 0) {
+    const barH = Math.max(10, visibleH * (visibleH / totalContentH));
+    const barY = itemsAreaTop + (shopScrollY / maxScroll) * (visibleH - barH);
+    c.fillStyle = 'rgba(255,255,255,0.2)';
+    c.fillRect(pX + pW - 6, barY, 3, barH);
+  }
+
+  // Scroll hint
+  if (maxScroll > 0) {
+    drawText(c, '滚轮滚动', IW / 2, itemsAreaBottom + 4, {
+      size: FONT.TINY(), color: '#555', align: 'center',
+    });
+  }
+
+  drawText(c, '按 E 关闭 | 点击购买', IW / 2, pY + pH - pH * 0.03, {
     size: FONT.TINY(), color: '#666', align: 'center',
   });
 
-  shopLayoutData = { panelX: pX, panelY: pY, panelW: pW, panelH: pH, itemStartY: iStartY, itemHeight: iH, items: SHOP_ITEMS };
+  shopLayoutData = { panelX: pX, panelY: pY, panelW: pW, panelH: pH, itemStartY: iStartY, itemHeight: iH, items: SHOP_ITEMS, itemsAreaTop, itemsAreaBottom, scrollY: () => shopScrollY };
 }
 
 export function handleShopClick(mx, my, player) {
   if (!shopLayoutData) return;
-  const { panelX, panelY, panelW, panelH, itemStartY, itemHeight, items } = shopLayoutData;
+  const { panelX, panelY, panelW, panelH, itemStartY, itemHeight, items, itemsAreaTop, itemsAreaBottom, scrollY } = shopLayoutData;
   if (mx < panelX || mx > panelX + panelW || my < panelY || my > panelY + panelH) return;
-  const relY = my - itemStartY;
+  if (my < itemsAreaTop || my > itemsAreaBottom) return;
+  const scroll = scrollY();
+  const relY = my - itemStartY + scroll;
   const idx = (relY / itemHeight) | 0;
   if (idx < 0 || idx >= items.length || relY < 0) return;
   const item = items[idx];

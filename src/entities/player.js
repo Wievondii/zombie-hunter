@@ -46,6 +46,9 @@ export class Player {
     this.critChance = 0;
     this.critDamage = 1.5;
     this.pickupRadius = 22;
+
+    // Weapon display order (set by HUD each frame)
+    this.weaponSlots = null;
   }
 
   get currentWeapon() { return this.weapons[this.currentWeaponIndex]; }
@@ -108,14 +111,15 @@ export class Player {
     if (isMoving) this.anim.setFacingFromVelocity(moveX, moveY);
     this.anim.update(dt, isMoving, mouseDown && this.canShoot());
 
-    // Weapon switch (1-7)
-    if (keys['1']) this.switchWeapon(0);
-    if (keys['2'] && this.weapons.length > 1) this.switchWeapon(1);
-    if (keys['3'] && this.weapons.length > 2) this.switchWeapon(2);
-    if (keys['4'] && this.weapons.length > 3) this.switchWeapon(3);
-    if (keys['5'] && this.weapons.length > 4) this.switchWeapon(4);
-    if (keys['6'] && this.weapons.length > 5) this.switchWeapon(5);
-    if (keys['7'] && this.weapons.length > 6) this.switchWeapon(6);
+    // Weapon switch (1-7) — uses display order from HUD
+    const slots = this.weaponSlots || this.weapons;
+    if (keys['1'] && slots.length > 0) this.switchWeapon(this.weapons.indexOf(slots[0]));
+    if (keys['2'] && slots.length > 1) this.switchWeapon(this.weapons.indexOf(slots[1]));
+    if (keys['3'] && slots.length > 2) this.switchWeapon(this.weapons.indexOf(slots[2]));
+    if (keys['4'] && slots.length > 3) this.switchWeapon(this.weapons.indexOf(slots[3]));
+    if (keys['5'] && slots.length > 4) this.switchWeapon(this.weapons.indexOf(slots[4]));
+    if (keys['6'] && slots.length > 5) this.switchWeapon(this.weapons.indexOf(slots[5]));
+    if (keys['7'] && slots.length > 6) this.switchWeapon(this.weapons.indexOf(slots[6]));
 
     // Ability activation (Space or Shift)
     if ((keys[' '] || keys['shift']) && this.abilityCooldown <= 0 && this.special) {

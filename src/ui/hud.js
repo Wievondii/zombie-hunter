@@ -201,6 +201,7 @@ export function drawHUD(c, player, gameTime, score, kills) {
   const allWN = ['pistol', 'shotgun', 'smg', 'rifle', 'sniper', 'launcher', 'minigun'];
   const ownedWeapons = allWN.filter(wn => player.weapons.includes(wn));
   const displayWeapons = ownedWeapons.length > 0 ? ownedWeapons : ['pistol'];
+  player.weaponSlots = displayWeapons;
   const weaponKeys = ['1', '2', '3', '4', '5', '6', '7'];
   const slotW = Math.max(50, Math.min(70, IW * 0.09 | 0));
   const slotH = wbH - 6;
