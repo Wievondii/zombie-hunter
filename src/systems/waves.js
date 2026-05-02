@@ -37,7 +37,7 @@ export function resetWaves() {
   waveState.stageCompleteTimer = 0;
 }
 
-export function advanceWave(player, generatePerkChoices, setPerkSelectState, stageBoss) {
+export function advanceWave(player, generatePerkChoices, setPerkSelectState, stageBoss, onStageComplete) {
   waveState.number++;
   waveState.killed = 0;
   waveState.difficultyLevel = Math.min(10, Math.floor(waveState.number / 3) + 1);
@@ -48,6 +48,12 @@ export function advanceWave(player, generatePerkChoices, setPerkSelectState, sta
   if (stageBoss && waveState.number === waveState.stageWaves) {
     waveState.bossWave = true;
     waveState.bossSpawned = false;
+  }
+
+  // Non-boss stages: complete after clearing the last wave
+  if (!stageBoss && waveState.number > waveState.stageWaves) {
+    if (onStageComplete) onStageComplete();
+    return;
   }
 
   waveState.isTransition = true;

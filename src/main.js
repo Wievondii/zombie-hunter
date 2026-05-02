@@ -14,7 +14,7 @@ import { comboSystem } from './systems/combo.js';
 import { initLighting, addLight, drawLighting } from './systems/lighting.js';
 import { triggerShake, getShakeOffset, triggerDamageVignette, triggerHitStop, getHitStopTimer, updateEffects, drawScreenEffects, drawVignette } from './systems/effects.js';
 import { waveState, resetWaves, advanceWave, updateWaveTransition } from './systems/waves.js';
-import { updateKillFeed } from './systems/killfeed.js';
+import { updateKillFeed, addKillFeed } from './systems/killfeed.js';
 import { drawCrosshair } from './renderer.js';
 import { TileMap } from './map/TileMap.js';
 import { drawHUD } from './ui/hud.js';
@@ -385,6 +385,36 @@ function updateGame(dt) {
   zombieGrid.clear();
   for (const z of zombies) if (z.alive) zombieGrid.insert(z);
 
+  // Helper: register a zombie kill (score, kills, wave progress, boss check)
+  function registerKill(z) {
+    score += comboSystem.addScore(z.xpValue);
+    kills++;
+    waveState.killed++;
+    if (kills === 5) tutorial.triggerEvent('kill5');
+    z.onDeath(player);
+    achievements.updateStats({ totalKills: achievements.stats.totalKills + 1, maxCombo: comboSystem.count });
+    if (z.boss && waveState.bossWave) {
+      waveState.bossWave = false;
+      flow.unlockStage((flow.selectedStage?.id || 1) + 1);
+      flow.metaCoins += Math.floor(score * 0.15);
+      addKillFeed('★ BOSS 击败! 关卡完成! ★', '#FFD700');
+      waveState.stageCompleteTimer = 2;
+      achievements.updateStats({ bossKills: achievements.stats.bossKills + 1, fastestClear: gameTime });
+    }
+    if (waveState.killed >= ZOMBIES_PER_WAVE) {
+      if (waveState.number === 1) tutorial.triggerEvent('wave2');
+      if (waveState.number === 4) tutorial.triggerEvent('wave5');
+      const stageBoss = flow.selectedStage?.boss || null;
+      advanceWave(player, generatePerkChoices, () => { flow.goTo(FlowState.PERK_SELECT); }, stageBoss, () => {
+        // Non-boss stage complete
+        flow.unlockStage((flow.selectedStage?.id || 1) + 1);
+        flow.metaCoins += Math.floor(score * 0.15);
+        addKillFeed('★ 关卡完成! ★', '#FFD700');
+        waveState.stageCompleteTimer = 2;
+      });
+    }
+  }
+
   // Bullet-zombie collision
   for (const b of bullets) {
     if (!b.alive) continue;
@@ -405,35 +435,15 @@ function updateGame(dt) {
             addLight(b.x, b.y, radius * 2, '#FF5722', 0.5);
             for (const oz of zombies) {
               if (!oz.alive || oz === z) continue;
-              if (dist2(oz.x, oz.y, b.x, b.y) < radius * radius) oz.takeDamage(b.damage * 0.6);
+              if (dist2(oz.x, oz.y, b.x, b.y) < radius * radius) {
+                oz.takeDamage(b.damage * 0.6);
+                if (!oz.alive) registerKill(oz);
+              }
             }
             if (player.alive && dist2(player.x, player.y, b.x, b.y) < radius * radius) player.takeDamage(10);
           }
         }
-        if (!z.alive) {
-          score += comboSystem.addScore(z.xpValue);
-          kills++;
-          waveState.killed++;
-          if (kills === 5) tutorial.triggerEvent('kill5');
-          z.onDeath(player);
-          // Update achievement stats
-          achievements.updateStats({ totalKills: achievements.stats.totalKills + 1, maxCombo: comboSystem.count });
-          // Check if boss was killed on boss wave - stage complete
-          if (z.boss && waveState.bossWave) {
-            waveState.bossWave = false;
-            flow.unlockStage((flow.selectedStage?.id || 1) + 1);
-            flow.metaCoins += Math.floor(score * 0.15);
-            addKillFeed('★ BOSS 击败! 关卡完成! ★', '#FFD700');
-            waveState.stageCompleteTimer = 2;
-            achievements.updateStats({ bossKills: achievements.stats.bossKills + 1, fastestClear: gameTime });
-          }
-          if (waveState.killed >= ZOMBIES_PER_WAVE) {
-            if (waveState.number === 1) tutorial.triggerEvent('wave2');
-            if (waveState.number === 4) tutorial.triggerEvent('wave5');
-            const stageBoss = flow.selectedStage?.boss || null;
-            advanceWave(player, generatePerkChoices, () => { flow.goTo(FlowState.PERK_SELECT); }, stageBoss);
-          }
-        }
+        if (!z.alive) registerKill(z);
         break;
       }
     }

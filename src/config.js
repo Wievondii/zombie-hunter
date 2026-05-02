@@ -18,7 +18,7 @@ export const MAX_ZOMBIES = 150;
 export const PI2 = Math.PI * 2;
 export const SAVE_KEY = 'pixel_zombie_hunter_v3';
 export const GAME_VERSION = '3.0';
-export const ZOMBIES_PER_WAVE = 25;
+export const ZOMBIES_PER_WAVE = 15;
 
 export function recalcSize() {
   IW = GAME_WIDTH;

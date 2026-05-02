@@ -46,11 +46,11 @@ export const POWERUP_TYPES = {
 
 export const PERKS = [
   { id: 'hp_max',     name: '强健体魄', desc: '最大HP+25',       apply: (p) => { p.maxHp += 25; p.hp = Math.min(p.hp + 25, p.maxHp); } },
-  { id: 'speed_up',   name: '疾跑',     desc: '移动速度+15%',    apply: (p) => { p.speed *= 1.15; } },
+  { id: 'speed_up',   name: '疾跑',     desc: '移动速度+15%',    apply: (p) => { p.speed = Math.min(500, p.speed * 1.15); } },
   { id: 'damage_up',  name: '狂暴',     desc: '所有武器伤害+20%', apply: (p) => { p.damageMult *= 1.2; } },
   { id: 'ammo_max',   name: '弹药专家', desc: '最大弹药+50',     apply: (p) => { p.maxAmmo += 50; } },
-  { id: 'armor',      name: '铁甲',     desc: '受伤减少20%',     apply: (p) => { p.armorMult *= 0.8; } },
+  { id: 'armor',      name: '铁甲',     desc: '受伤减少20%',     apply: (p) => { p.armorMult = Math.max(0.15, p.armorMult * 0.8); } },
   { id: 'coin_up',    name: '财迷',     desc: '金币获取+30%',    apply: (p) => { p.coinMult *= 1.3; } },
   { id: 'regen',      name: '再生',     desc: '每秒恢复1HP',     apply: (p) => { p.regenRate += 1; } },
-  { id: 'fire_rate',  name: '快手',     desc: '射速+15%',        apply: (p) => { p.fireRateMult *= 0.85; } },
+  { id: 'fire_rate',  name: '快手',     desc: '射速+15%',        apply: (p) => { p.fireRateMult = Math.max(0.15, p.fireRateMult * 0.85); } },
 ];

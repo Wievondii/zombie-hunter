@@ -201,8 +201,115 @@ export class Zombie {
       c.fillRect(px + 2 + eyeOff, bodyY - s / 2 - hs + 3, 1, 1);
     }
 
-    // Boss crown
-    if (this.boss) { c.fillStyle = '#FFD700'; c.fillRect(px - 4, bodyY - s / 2 - hs - 3, 8, 3); c.fillRect(px - 3, bodyY - s / 2 - hs - 5, 2, 2); c.fillRect(px + 1, bodyY - s / 2 - hs - 5, 2, 2); }
+    // Boss-specific rendering
+    if (this.boss) {
+      const bossType = this.type;
+      const pulse = Math.sin(this.animTimer * 4) * 0.3 + 0.7;
+      const eyeOff = flip ? -1 : 1;
+
+      if (bossType === 'necromancer') {
+        // Dark robe + staff + glowing eyes
+        c.fillStyle = '#4A148C';
+        c.fillRect(px - s / 2 - 1, bodyY - 2, s + 2, s / 2 + 4);
+        c.fillStyle = '#7B1FA2';
+        c.fillRect(px - 2, bodyY - s / 2 - hs - 8, 4, 12); // Staff
+        c.fillStyle = '#E040FB';
+        c.fillRect(px - 2, bodyY - s / 2 - hs - 10, 4, 3); // Staff orb
+        // Glowing eyes
+        if (!isUp) {
+          c.fillStyle = `rgba(224,64,251,${pulse})`;
+          c.fillRect(px - 2 + eyeOff, bodyY - s / 2 - hs + 3, 2, 2);
+          c.fillRect(px + 1 + eyeOff, bodyY - s / 2 - hs + 3, 2, 2);
+        }
+      } else if (bossType === 'mutant_tank') {
+        // Thick armor plates + chains
+        c.fillStyle = '#3E2723';
+        c.fillRect(px - s / 2 - 2, bodyY - s / 2, s + 4, s);
+        c.fillStyle = '#5D4037';
+        c.fillRect(px - s / 2 + 1, bodyY - s / 2 + 2, s - 2, 3);
+        c.fillRect(px - s / 2 + 1, bodyY + s / 2 - 5, s - 2, 3);
+        // Chain links
+        c.fillStyle = '#FFD700';
+        c.fillRect(px - s / 2 - 3, bodyY - 2, 3, 2);
+        c.fillRect(px + s / 2, bodyY - 2, 3, 2);
+      } else if (bossType === 'mech_walker') {
+        // Metallic body + antenna + visor
+        c.fillStyle = '#455A64';
+        c.fillRect(px - s / 2 - 1, bodyY - s / 2 - 1, s + 2, s + 2);
+        c.fillStyle = '#90A4AE';
+        c.fillRect(px - s / 2 + 2, bodyY - s / 2 + 2, s - 4, s - 4);
+        // Antenna
+        c.fillStyle = '#F44336';
+        c.fillRect(px, bodyY - s / 2 - hs - 6, 2, 6);
+        c.fillStyle = '#FF5722';
+        c.fillRect(px - 1, bodyY - s / 2 - hs - 8, 4, 3);
+        // Visor
+        if (!isUp) {
+          c.fillStyle = `rgba(33,150,243,${pulse})`;
+          c.fillRect(px - 3 + eyeOff, bodyY - s / 2 - hs + 2, 6, 2);
+        }
+      } else if (bossType === 'hive_mind') {
+        // Tentacles + pulsing core
+        c.fillStyle = '#AD1457';
+        for (let i = 0; i < 4; i++) {
+          const ta = this.animTimer * 2 + i * 1.57;
+          const tx = Math.cos(ta) * (s / 2 + 4);
+          const ty = Math.sin(ta) * (s / 2 + 4);
+          c.fillRect(px + tx - 1, bodyY + ty - 1, 3, 3);
+        }
+        // Pulsing core
+        c.fillStyle = `rgba(233,30,99,${pulse})`;
+        c.fillRect(px - 3, bodyY - 3, 6, 6);
+      } else if (bossType === 'plague_spreader') {
+        // Gas mask + hood + toxic particles
+        c.fillStyle = '#2E7D32';
+        c.fillRect(px - s / 2 - 1, bodyY - s / 2 - hs, s + 2, hs + 2); // Hood
+        // Gas mask
+        if (!isUp) {
+          c.fillStyle = '#1B5E20';
+          c.fillRect(px - 3 + eyeOff, bodyY - s / 2 - hs + 2, 6, 4);
+          c.fillStyle = '#4CAF50';
+          c.fillRect(px - 2 + eyeOff, bodyY - s / 2 - hs + 3, 2, 2);
+          c.fillRect(px + 1 + eyeOff, bodyY - s / 2 - hs + 3, 2, 2);
+        }
+        // Toxic particles
+        if (Math.random() < 0.3) {
+          spawnParticles(px + (Math.random() - 0.5) * s, bodyY - s / 2, 1, ['#4CAF50', '#81C784'], 20, 0.3, 1);
+        }
+      } else if (bossType === 'shadow_assassin') {
+        // Cloak + dual blades
+        c.fillStyle = '#311B92';
+        c.fillRect(px - s / 2 - 2, bodyY - s / 2 - hs, s + 4, s + hs);
+        // Blades
+        c.fillStyle = '#CE93D8';
+        c.fillRect(px - s / 2 - 4, bodyY - 3, 3, s / 2);
+        c.fillRect(px + s / 2 + 1, bodyY - 3, 3, s / 2);
+        // Smoke trail
+        if (Math.random() < 0.2) {
+          spawnParticles(px + (Math.random() - 0.5) * 6, bodyY + s / 2, 1, ['#7B1FA2', '#4A148C'], 30, 0.4, 1.5);
+        }
+      } else if (bossType === 'iron_fortress') {
+        // Heavy plating + shield + laser sight
+        c.fillStyle = '#37474F';
+        c.fillRect(px - s / 2 - 3, bodyY - s / 2 - 2, s + 6, s + 4);
+        c.fillStyle = '#607D8B';
+        c.fillRect(px - s / 2 + 1, bodyY - s / 2 + 2, s - 2, s - 4);
+        // Shield
+        c.fillStyle = '#90A4AE';
+        c.fillRect(px - s / 2 - 4, bodyY - s / 2 + 2, 3, s - 4);
+        // Laser sight
+        if (!isUp) {
+          c.fillStyle = `rgba(244,67,54,${pulse})`;
+          c.fillRect(px + eyeOff * 2, bodyY - s / 2 - hs + 3, 2, 2);
+        }
+      }
+
+      // Boss crown (all bosses)
+      c.fillStyle = '#FFD700';
+      c.fillRect(px - 4, bodyY - s / 2 - hs - 3, 8, 3);
+      c.fillRect(px - 3, bodyY - s / 2 - hs - 5, 2, 2);
+      c.fillRect(px + 1, bodyY - s / 2 - hs - 5, 2, 2);
+    }
 
     // Arms (in front of body when not facing up)
     if (!isUp) {

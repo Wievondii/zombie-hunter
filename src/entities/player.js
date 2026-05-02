@@ -231,6 +231,7 @@ export class Player {
       spawnParticles(this.x, this.y, 8, ['#2196F3', '#64B5F6', '#FFF'], 120, 0.3, 2);
     }
     amount *= this.armorMult;
+    amount = Math.max(0, amount);
     this.hp -= amount; this.invincibleTimer = 0.5;
     triggerShake(6, 0.2);
     spawnParticles(this.x, this.y, 15, ['#FF4444', '#FF0000', '#FF6666', '#AA0000'], 180, 0.5, 3);

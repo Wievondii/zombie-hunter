@@ -126,11 +126,11 @@ export function applyItemStats(player, item) {
   for (const [statId, value] of Object.entries(item.stats)) {
     switch (statId) {
       case 'damage': player.damageMult += value; break;
-      case 'fireRate': player.fireRateMult += value; break;
+      case 'fireRate': player.fireRateMult += value; player.fireRateMult = Math.max(0.15, player.fireRateMult); break;
       case 'hp': player.maxHp += value; player.hp = Math.min(player.hp + value, player.maxHp); break;
-      case 'speed': player.speed += value; break;
-      case 'armor': player.armorMult -= value; break;
-      case 'critChance': player.critChance = (player.critChance || 0) + value; break;
+      case 'speed': player.speed += value; player.speed = Math.min(500, player.speed); break;
+      case 'armor': player.armorMult -= value; player.armorMult = Math.max(0.15, player.armorMult); break;
+      case 'critChance': player.critChance = Math.min(0.85, (player.critChance || 0) + value); break;
       case 'critDamage': player.critDamage = (player.critDamage || 1.5) + value; break;
       case 'pickupRadius': player.pickupRadius = (player.pickupRadius || 22) + value; break;
       case 'maxAmmo': player.maxAmmo += value; break;

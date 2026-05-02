@@ -17,7 +17,7 @@ export function updatePowerups(dt, player, waveState) {
     if (Math.hypot(player.x - p.x, player.y - p.y) < 25) {
       if (p.type === 'nuke') {
         for (const z of zombies) {
-          if (z.alive) { z.hp = 0; z.alive = false; z.onDeath(player); waveState.killed++; player.coins += Math.floor((z.coinDrop[0] + Math.random() * (z.coinDrop[1] - z.coinDrop[0])) * player.coinMult); }
+          if (z.alive) { z.hp = 0; z.alive = false; z.onDeath(player); waveState.killed++; }
         }
         triggerShake(15, 0.5); audio.explosion(); triggerFlash('#FF1744'); addLight(player.x, player.y, 200, '#FF1744', 0.8);
       } else {
