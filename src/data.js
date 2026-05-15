@@ -13,6 +13,10 @@ export const ZOMBIE_TYPES = {
   cryo_wraith:  { name: '寒冰亡魂',   hp: 100, speed: 38, damage: 14, color: '#4FC3F7', colorDark: '#0288D1', colorClothes: '#01579B', size: 30, coinDrop: [180, 360], xpValue: 180, boss: true },
   pyro_maniac:  { name: '烈焰狂人',   hp: 120, speed: 32,  damage: 20, color: '#FF6D00', colorDark: '#E65100', colorClothes: '#BF360C', size: 32, coinDrop: [220, 440], xpValue: 220, boss: true },
 
+  plague_spreader: { name: '瘟疫散布者', hp: 100, speed: 35, damage: 18, color: '#4CAF50', colorDark: '#2E7D32', colorClothes: '#33691E', size: 28, coinDrop: [180, 360], xpValue: 180, boss: true },
+  shadow_assassin: { name: '暗影刺客',   hp: 90,  speed: 55, damage: 22, color: '#7B1FA2', colorDark: '#4A148C', colorClothes: '#311B92', size: 26, coinDrop: [150, 300], xpValue: 150, boss: true },
+  iron_fortress:  { name: '钢铁堡垒',   hp: 180, speed: 20, damage: 28, color: '#607D8B', colorDark: '#37474F', colorClothes: '#263238', size: 38, coinDrop: [250, 500], xpValue: 250, boss: true },
+
   // === New zombie types (M3) ===
   charger:   { name: '冲锋僵尸', hp: 40, speed: 120, damage: 20, size: 16, xpValue: 15, color: '#FF6F00', colorDark: '#BF360C', colorClothes: '#4E342E', coinDrop: [10, 20], skill: 'charge', skillCooldown: 4, skillRange: 150 },
   summoner:  { name: '召唤僵尸', hp: 80, speed: 50,  damage: 15, size: 20, xpValue: 25, color: '#673AB7', colorDark: '#4A148C', colorClothes: '#311B92', coinDrop: [15, 30], skill: 'summon', skillCooldown: 8, skillRange: 0 },
