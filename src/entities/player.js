@@ -35,6 +35,11 @@ export class Player {
     this.abilityCooldown = 0;
     this.abilityMaxCooldown = 3;
 
+    // Warrior rage state
+    this.rageActive = false;
+    this.rageTimer = 0;
+    this.meleeDamageMult = 1.0;
+
     // Scout dodge state
     this.dodgeTimer = 0;
     this.dodgeDx = 0;
@@ -47,13 +52,20 @@ export class Player {
     this.critDamage = 1.5;
     this.pickupRadius = 22;
 
+    // Slow debuff (from cryo wraith)
+    this._slowTimer = 0;
+    this._slowMult = 1;
+
     // Weapon display order (set by HUD each frame)
     this.weaponSlots = null;
   }
 
   get currentWeapon() { return this.weapons[this.currentWeaponIndex]; }
   get weaponData() { return WEAPON_DATA[this.currentWeapon]; }
-  getEffectiveSpeed() { return this.speed * (this.activePowerups.speed > 0 ? 1.5 : 1); }
+  getEffectiveSpeed() {
+    const slowMult = this._slowTimer > 0 ? this._slowMult : 1;
+    return this.speed * (this.activePowerups.speed > 0 ? 1.5 : 1) * slowMult;
+  }
   getEffectiveFireRate() {
     const base = this.weaponData?.fireRate || 0.38;
     const mult = this.fireRateMult * (this.activePowerups.rapidFire > 0 ? 0.5 : 1);
@@ -69,7 +81,31 @@ export class Player {
     this.animTimer += dt;
     this.abilityCooldown = Math.max(0, this.abilityCooldown - dt);
 
+    // Rage timer countdown
+    if (this.rageActive) {
+      this.rageTimer -= dt;
+      if (this.rageTimer <= 0) {
+        this.rageActive = false;
+        this.rageTimer = 0;
+        this.armorMult = this._originalArmorMult ?? this.armorMult;
+        this.meleeDamageMult = 1.0;
+      } else {
+        // Red particles around player during rage
+        if (Math.random() < 0.4) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 12 + Math.random() * 8;
+          spawnParticles(
+            this.x + Math.cos(angle) * dist,
+            this.y + Math.sin(angle) * dist,
+            1, ['#F44336', '#FF5252', '#D32F2F', '#FF0000'],
+            100, 0.25, 1.5
+          );
+        }
+      }
+    }
+
     for (const k in this.activePowerups) { if (this.activePowerups[k] > 0) this.activePowerups[k] -= dt; }
+    if (this._slowTimer > 0) this._slowTimer -= dt;
     if (this.regenRate > 0) this.hp = Math.min(this.maxHp, this.hp + this.regenRate * dt);
 
     // Magnet
@@ -169,6 +205,58 @@ export class Player {
       audio.purchase();
       spawnParticles(this.x, this.y, 12, ['#FF9800', '#FFB74D', '#FFF'], 100, 0.3, 2);
       triggerShake(3, 0.1);
+    } else if (this.special === 'mage_fireball') {
+      // Mage fireball: explosive projectile with AoE damage
+      const angle = this.aimAngle;
+      const bx = this.x + Math.cos(angle) * 14;
+      const by = this.y + Math.sin(angle) * 14;
+      bullets.push({
+        x: bx, y: by,
+        vx: Math.cos(angle) * 200,
+        vy: Math.sin(angle) * 200,
+        damage: 60,
+        penetrating: false,
+        color: '#FF6F00',
+        alive: true,
+        trail: [],
+        distanceTraveled: 0,
+        maxDistance: 400,
+        explosive: true,
+        explosionRadius: 40,
+      });
+      this.abilityCooldown = this.abilityMaxCooldown;
+      audio.shoot('launcher');
+      spawnParticles(bx, by, 10, ['#FF6F00', '#FF9800', '#FF5722', '#FFF'], 180, 0.35, 2.5);
+      triggerShake(4, 0.15);
+    } else if (this.special === 'elf_summon') {
+      // Elf summon: mobile friendly archer
+      turrets.push({
+        x: this.x + 20, y: this.y,
+        hp: 50, maxHp: 50,
+        damage: 15,
+        range: 150,
+        fireRate: 0.5,
+        fireCooldown: 0,
+        life: 10,
+        alive: true,
+        animTimer: 0,
+        type: 'elf',
+        speed: 120,
+      });
+      this.abilityCooldown = this.abilityMaxCooldown;
+      audio.purchase();
+      spawnParticles(this.x, this.y, 12, ['#4CAF50', '#81C784', '#A5D6A7', '#FFF'], 120, 0.3, 2);
+      triggerShake(2, 0.1);
+    } else if (this.special === 'warrior_rage') {
+      // Warrior rage: damage reduction + melee damage buff
+      this.rageActive = true;
+      this.rageTimer = 5;
+      this._originalArmorMult = this.armorMult;
+      this.armorMult *= 0.5;
+      this.meleeDamageMult = 2.0;
+      this.abilityCooldown = this.abilityMaxCooldown;
+      spawnParticles(this.x, this.y, 20, ['#F44336', '#FF5252', '#D32F2F', '#FF0000'], 200, 0.5, 3);
+      triggerShake(6, 0.25);
     }
   }
 
@@ -356,6 +444,22 @@ export function updateTurrets(dt, zombies, bullets) {
       continue;
     }
 
+    // Elf: move toward nearest zombie
+    if (t.type === 'elf') {
+      let nearest = null, nearestDist = t.range * t.range;
+      for (const z of zombies) {
+        if (!z.alive) continue;
+        const dx = z.x - t.x, dy = z.y - t.y;
+        const d = dx * dx + dy * dy;
+        if (d < nearestDist) { nearestDist = d; nearest = z; }
+      }
+      if (nearest) {
+        const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
+        t.x += Math.cos(angle) * t.speed * dt;
+        t.y += Math.sin(angle) * t.speed * dt;
+      }
+    }
+
     // Find nearest zombie
     t.fireCooldown -= dt;
     if (t.fireCooldown <= 0) {
@@ -385,6 +489,42 @@ export function updateTurrets(dt, zombies, bullets) {
 export function drawTurrets(c) {
   for (const t of turrets) {
     const px = t.x | 0, py = t.y | 0;
+
+    // Elf summon: green pixie archer
+    if (t.type === 'elf') {
+      // Glow
+      c.fillStyle = 'rgba(76,175,80,0.15)';
+      c.fillRect(px - 6, py - 6, 12, 12);
+      // Wings
+      c.fillStyle = '#A5D6A7';
+      c.fillRect(px - 6, py - 2, 3, 5);
+      c.fillRect(px + 3, py - 2, 3, 5);
+      // Body
+      c.fillStyle = '#4CAF50';
+      c.fillRect(px - 3, py - 3, 6, 7);
+      // Head
+      c.fillStyle = '#81C784';
+      c.fillRect(px - 3, py - 6, 6, 4);
+      // Eyes
+      c.fillStyle = '#FFF';
+      c.fillRect(px - 2, py - 5, 1, 1);
+      c.fillRect(px + 1, py - 5, 1, 1);
+      // Hair
+      c.fillStyle = '#2E7D32';
+      c.fillRect(px - 4, py - 7, 8, 1);
+      c.fillRect(px - 3, py - 8, 6, 1);
+      // Bow
+      c.fillStyle = '#8D6E63';
+      c.fillRect(px + 3, py - 4, 2, 6);
+      // HP bar
+      if (t.hp < t.maxHp) {
+        const hpW = 10, hpH = 2;
+        c.fillStyle = '#333'; c.fillRect(px - hpW / 2, py - 10, hpW, hpH);
+        c.fillStyle = '#4CAF50'; c.fillRect(px - hpW / 2, py - 10, (hpW * t.hp / t.maxHp) | 0, hpH);
+      }
+      continue; // Skip regular turret draw
+    }
+
     // Base
     c.fillStyle = '#5D4037';
     c.fillRect(px - 6, py - 2, 12, 8);

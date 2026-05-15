@@ -16,6 +16,7 @@ import { triggerShake, getShakeOffset, triggerDamageVignette, triggerHitStop, ge
 import { waveState, resetWaves, advanceWave, updateWaveTransition } from './systems/waves.js';
 import { updateKillFeed, addKillFeed } from './systems/killfeed.js';
 import { drawCrosshair } from './renderer.js';
+import { MeleeWeapon, meleeWeapons } from './entities/melee-weapon.js';
 import { TileMap } from './map/TileMap.js';
 import { drawHUD } from './ui/hud.js';
 import { drawShopUI, handleShopClick, scrollShop } from './ui/shop.js';
@@ -53,6 +54,10 @@ function handleResize() {
 
 window.addEventListener('resize', handleResize);
 initInput(canvas);
+// Track right-click for melee attack
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 2) mouseRightJustPressed = true;
+});
 
 // Game flow
 const flow = new GameFlow();
@@ -69,7 +74,9 @@ let gameTime = 0;
 let lastTime = performance.now();
 let accumulatedShopKey = false;
 let accumulatedEscKey = false;
+let accumulatedMeleeKey = false;
 let heartbeatTimer = 0;
+let mouseRightJustPressed = false;
 
 // Flow screen layout data
 let titleLayout = null;
@@ -78,7 +85,7 @@ let stageSelectLayout = null;
 let resultsLayout = null;
 
 // Expose for UI modules
-window.__game = { zombies, bullets, particles, pickups, player: null };
+window.__game = { zombies, bullets, particles, pickups, hazards, player: null };
 
 function initGame(characterId) {
   const ch = CHARACTERS[characterId] || CHARACTERS.soldier;
@@ -96,7 +103,9 @@ function initGame(characterId) {
   player.weapons = [...ch.startWeapons];
   player.characterId = characterId;
   player.special = ch.special || null;
-  player.abilityMaxCooldown = ch.special === 'dodge' ? 2.5 : ch.special === 'turret' ? 8 : 3;
+  player.abilityMaxCooldown = ch.special === 'dodge' ? 2.5 : ch.special === 'turret' ? 8 :
+    ch.special === 'mage_fireball' ? 4 : ch.special === 'elf_summon' ? 12 :
+    ch.special === 'warrior_rage' ? 8 : 3;
 
   clearBullets(); clearZombies(); clearPickups(); clearPowerups(); clearHazards(); clearAll();
   turrets.length = 0;
@@ -190,6 +199,7 @@ function gameLoop(timestamp) {
   if (flow.state === FlowState.SHOP && mouseWheelDelta !== 0) scrollShop(mouseWheelDelta);
   render();
   resetJustPressed();
+  mouseRightJustPressed = false;
 }
 
 function handleInput() {
@@ -215,6 +225,33 @@ function handleInput() {
 
   // F11
   if (keys['f11']) { keys['f11'] = false; if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen(); }
+
+  // Melee attack (Tab with debounce, right-click with single-press)
+  const meleePressed = (keys['tab'] && !accumulatedMeleeKey) || mouseRightJustPressed;
+  if (meleePressed && flow.state === FlowState.PLAYING && player?.alive) {
+    if (keys['tab']) accumulatedMeleeKey = true;
+    for (const w of meleeWeapons) {
+      const prevSwing = w.swingTimer;
+      const hits = w.attack(player, zombies, zombieGrid);
+      // Play swing sound when weapon actually attacked (was not on cooldown)
+      if (prevSwing === 0 && w.swingTimer > 0) audio.zombieHit();
+      for (const hit of hits) {
+        const z = hit.zombie;
+        const dx = z.x - player.x;
+        const dy = z.y - player.y;
+        const angle = Math.atan2(dy, dx);
+        // Apply player melee damage multiplier (e.g., warrior rage doubles melee damage)
+        const dmgMult = player.meleeDamageMult || 1;
+        z.takeDamage(hit.damage * dmgMult, angle);
+        // Apply knockback
+        z.x += Math.cos(angle) * hit.knockback;
+        z.y += Math.sin(angle) * hit.knockback;
+        if (!z.alive) registerKill(z);
+      }
+    }
+    mouseRightJustPressed = false;
+  }
+  if (!keys['tab']) accumulatedMeleeKey = false;
 
   // Click handling
   if (!mouseJustPressed) return;
@@ -297,6 +334,35 @@ function handleInput() {
   }
 }
 
+// Module-level registerKill (extracted for use by both updateGame and handleInput)
+function registerKill(z) {
+  score += comboSystem.addScore(z.xpValue);
+  kills++;
+  waveState.killed++;
+  if (kills === 5) tutorial.triggerEvent('kill5');
+  z.onDeath(player);
+  achievements.updateStats({ totalKills: achievements.stats.totalKills + 1, maxCombo: comboSystem.count });
+  if (z.boss && waveState.bossWave) {
+    waveState.bossWave = false;
+    flow.unlockStage((flow.selectedStage?.id || 1) + 1);
+    flow.metaCoins += Math.floor(score * 0.15);
+    addKillFeed('★ BOSS 击败! 关卡完成! ★', '#FFD700');
+    waveState.stageCompleteTimer = 2;
+    achievements.updateStats({ bossKills: achievements.stats.bossKills + 1, fastestClear: gameTime });
+  }
+  if (waveState.killed >= ZOMBIES_PER_WAVE) {
+    if (waveState.number === 1) tutorial.triggerEvent('wave2');
+    if (waveState.number === 4) tutorial.triggerEvent('wave5');
+    const stageBoss = flow.selectedStage?.boss || null;
+    advanceWave(player, generatePerkChoices, () => { flow.goTo(FlowState.PERK_SELECT); }, stageBoss, () => {
+      flow.unlockStage((flow.selectedStage?.id || 1) + 1);
+      flow.metaCoins += Math.floor(score * 0.15);
+      addKillFeed('★ 关卡完成! ★', '#FFD700');
+      waveState.stageCompleteTimer = 2;
+    });
+  }
+}
+
 function updateGame(dt) {
   // Stage complete timer
   if (waveState.stageCompleteTimer > 0) {
@@ -320,6 +386,12 @@ function updateGame(dt) {
   player.x = resolved.x;
   player.y = resolved.y;
   updateEffects(dt);
+
+  // Melee weapon cooldown & animation updates
+  for (const w of meleeWeapons) w.update(dt);
+
+  // Reset slow debuff — freezer zombie will set _slowMult during zombie update
+  if (player && player._slowMult !== undefined) player._slowMult = 1.0;
 
   // Low HP heartbeat
   if (player.alive && player.hp < player.maxHp * 0.25) {
@@ -385,36 +457,6 @@ function updateGame(dt) {
   // Spatial grid
   zombieGrid.clear();
   for (const z of zombies) if (z.alive) zombieGrid.insert(z);
-
-  // Helper: register a zombie kill (score, kills, wave progress, boss check)
-  function registerKill(z) {
-    score += comboSystem.addScore(z.xpValue);
-    kills++;
-    waveState.killed++;
-    if (kills === 5) tutorial.triggerEvent('kill5');
-    z.onDeath(player);
-    achievements.updateStats({ totalKills: achievements.stats.totalKills + 1, maxCombo: comboSystem.count });
-    if (z.boss && waveState.bossWave) {
-      waveState.bossWave = false;
-      flow.unlockStage((flow.selectedStage?.id || 1) + 1);
-      flow.metaCoins += Math.floor(score * 0.15);
-      addKillFeed('★ BOSS 击败! 关卡完成! ★', '#FFD700');
-      waveState.stageCompleteTimer = 2;
-      achievements.updateStats({ bossKills: achievements.stats.bossKills + 1, fastestClear: gameTime });
-    }
-    if (waveState.killed >= ZOMBIES_PER_WAVE) {
-      if (waveState.number === 1) tutorial.triggerEvent('wave2');
-      if (waveState.number === 4) tutorial.triggerEvent('wave5');
-      const stageBoss = flow.selectedStage?.boss || null;
-      advanceWave(player, generatePerkChoices, () => { flow.goTo(FlowState.PERK_SELECT); }, stageBoss, () => {
-        // Non-boss stage complete
-        flow.unlockStage((flow.selectedStage?.id || 1) + 1);
-        flow.metaCoins += Math.floor(score * 0.15);
-        addKillFeed('★ 关卡完成! ★', '#FFD700');
-        waveState.stageCompleteTimer = 2;
-      });
-    }
-  }
 
   // Bullet-zombie collision
   for (const b of bullets) {
@@ -545,6 +587,7 @@ function render() {
   for (const z of zombies) if (z.alive) z.draw(ctx);
   drawTurrets(ctx);
   if (player?.alive) player.draw(ctx);
+  for (const w of meleeWeapons) w.draw(ctx, player);
   for (const b of bullets) if (b.alive) drawBullet(ctx, b);
   for (const a of acidProjectiles) if (a.alive) drawAcid(ctx, a);
   for (const p of particles) if (p.alive) drawParticle(ctx, p);

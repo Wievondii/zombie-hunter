@@ -3,6 +3,7 @@ import { WEAPON_DATA, SHOP_ITEMS } from '../data.js';
 import { audio } from '../audio.js';
 import { triggerShake } from '../systems/effects.js';
 import { spawnFloatingText } from '../systems/particles.js';
+import { MeleeWeapon, meleeWeapons } from '../entities/melee-weapon.js';
 import { drawText, FONT } from './TextRenderer.js';
 
 export let shopLayoutData = null;
@@ -44,7 +45,8 @@ export function drawShopUI(c, player) {
   SHOP_ITEMS.forEach((item, idx) => {
     const iy = iStartY + idx * iH - shopScrollY;
     if (iy + iH < itemsAreaTop || iy > itemsAreaBottom) return;
-    const alreadyOwned = item.type === 'weapon' && player.weapons.includes(item.weaponKey);
+    const alreadyOwned = (item.type === 'weapon' && player.weapons.includes(item.weaponKey)) ||
+                        (item.type === 'melee' && meleeWeapons.some(mw => mw.weaponKey === item.weaponKey));
     const canAfford = player.coins >= item.price;
     const isMaxAmmo = item.type === 'ammo' && player.ammo >= player.maxAmmo;
     const isFullHp = item.type === 'health' && player.hp >= player.maxHp;
@@ -63,6 +65,13 @@ export function drawShopUI(c, player) {
       drawText(c, WEAPON_DATA[item.weaponKey].description, pX + 18, iy + iH * 0.7, {
         size: FONT.TINY(), color: '#AAA', baseline: 'middle',
       });
+    } else if (item.type === 'melee') {
+      const mwData = WEAPON_DATA[item.weaponKey];
+      if (mwData) {
+        drawText(c, `伤害${mwData.damage} | 范围${mwData.range} | CD${mwData.cooldown.toFixed(1)}s`, pX + 18, iy + iH * 0.7, {
+          size: FONT.TINY(), color: mwData.color || '#AAA', baseline: 'middle',
+        });
+      }
     } else if (item.type === 'upgrade') {
       drawText(c, item.desc || `升级${item.stat}`, pX + 18, iy + iH * 0.7, {
         size: FONT.TINY(), color: '#AAA', baseline: 'middle',
@@ -111,7 +120,8 @@ export function handleShopClick(mx, my, player) {
   const idx = (relY / itemHeight) | 0;
   if (idx < 0 || idx >= items.length || relY < 0) return;
   const item = items[idx];
-  const alreadyOwned = item.type === 'weapon' && player.weapons.includes(item.weaponKey);
+  const alreadyOwned = (item.type === 'weapon' && player.weapons.includes(item.weaponKey)) ||
+                      (item.type === 'melee' && meleeWeapons.some(mw => mw.weaponKey === item.weaponKey));
   const canAfford = player.coins >= item.price;
   const isMaxAmmo = item.type === 'ammo' && player.ammo >= player.maxAmmo;
   const isFullHp = item.type === 'health' && player.hp >= player.maxHp;
@@ -122,5 +132,14 @@ export function handleShopClick(mx, my, player) {
   else if (item.type === 'ammo') { player.ammo = Math.min(player.maxAmmo, player.ammo + item.amount); spawnFloatingText(player.x, player.y - 20, `+${item.amount} 弹药`, '#88CCFF'); }
   else if (item.type === 'health') { player.hp = Math.min(player.maxHp, player.hp + item.amount); spawnFloatingText(player.x, player.y - 20, `+${item.amount} HP`, '#FF6666'); }
   else if (item.type === 'upgrade') { player.weaponUpgrades[item.stat] += item.amount; spawnFloatingText(player.x, player.y - 20, `升级! ${item.stat}`, '#4CAF50'); }
+  else if (item.type === 'melee') {
+    const config = WEAPON_DATA[item.weaponKey];
+    if (config) {
+      const mw = new MeleeWeapon(config);
+      mw.weaponKey = item.weaponKey;
+      meleeWeapons.push(mw);
+      spawnFloatingText(player.x, player.y - 20, `获得 ${item.name}!`, config.color || '#FFD700');
+    }
+  }
   audio.purchase(); triggerShake(1, 0.05);
 }

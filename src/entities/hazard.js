@@ -19,12 +19,19 @@ export function createBarrel(x, y) {
 export function updateHazards(dt, player) {
   for (let i = hazards.length - 1; i >= 0; i--) {
     const h = hazards[i];
-    if (h.type === 'acid') {
+    if (h.type === 'acid' || h.type === 'ice' || h.type === 'fire') {
       h.life -= dt; h.tickTimer += dt;
       if (h.life <= 0) { hazards.splice(i, 1); continue; }
       if (h.tickTimer >= 0.5 && player.alive) {
         h.tickTimer = 0;
-        if (dist2(player.x, player.y, h.x, h.y) < h.radius ** 2) player.takeDamage(h.damage);
+        if (dist2(player.x, player.y, h.x, h.y) < h.radius ** 2) {
+          player.takeDamage(h.damage);
+          // Ice hazards slow the player
+          if (h.type === 'ice') {
+            player._slowTimer = 1.5;
+            player._slowMult = 0.5;
+          }
+        }
       }
     }
     if (h.type === 'barrel' && !h.exploded) {
@@ -50,6 +57,18 @@ export function drawHazard(c, h) {
     const a = 0.3 + 0.15 * Math.sin(h.life);
     c.fillStyle = `rgba(76,175,80,${a})`; c.beginPath(); c.arc(h.x, h.y, h.radius, 0, PI2); c.fill();
     c.fillStyle = `rgba(139,195,74,${a * 0.5})`; c.beginPath(); c.arc(h.x, h.y, h.radius * 0.6, 0, PI2); c.fill();
+  } else if (h.type === 'ice') {
+    const a = 0.3 + 0.1 * Math.sin(h.life * 2);
+    c.fillStyle = `rgba(179,229,252,${a})`; c.beginPath(); c.arc(h.x, h.y, h.radius, 0, PI2); c.fill();
+    c.fillStyle = `rgba(224,247,250,${a * 0.6})`; c.beginPath(); c.arc(h.x, h.y, h.radius * 0.5, 0, PI2); c.fill();
+    // Ice crystal sparkle
+    c.fillStyle = `rgba(255,255,255,${0.4 + Math.sin(h.life * 5) * 0.3})`;
+    c.fillRect(h.x - 1, h.y - 1, 2, 2);
+  } else if (h.type === 'fire') {
+    const a = 0.35 + 0.15 * Math.sin(h.life * 3);
+    c.fillStyle = `rgba(255,109,0,${a})`; c.beginPath(); c.arc(h.x, h.y, h.radius, 0, PI2); c.fill();
+    c.fillStyle = `rgba(255,61,0,${a * 0.7})`; c.beginPath(); c.arc(h.x, h.y, h.radius * 0.6, 0, PI2); c.fill();
+    c.fillStyle = `rgba(255,171,0,${a * 0.4})`; c.beginPath(); c.arc(h.x, h.y, h.radius * 0.3, 0, PI2); c.fill();
   } else if (h.type === 'barrel') {
     const px = h.x | 0, py = h.y | 0;
     c.fillStyle = '#5D4037'; c.fillRect(px - 8, py - 10, 16, 20);

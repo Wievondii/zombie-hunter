@@ -172,6 +172,145 @@ const PATTERNS = {
       }
     },
   },
+  // Cryo Wraith patterns
+  iceSpike: {
+    name: 'iceSpike',
+    cooldown: 2.0,
+    execute(boss, player) {
+      const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
+      // Fan of 5 ice spikes
+      for (let i = -2; i <= 2; i++) {
+        const a = angle + i * 0.18;
+        acidProjectiles.push({
+          x: boss.x, y: boss.y,
+          vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
+          alive: true, life: 3.5, damage: 7,
+          color: '#80DEEA',
+        });
+      }
+      audio.acidSpit();
+      addLight(boss.x, boss.y, 50, '#80DEEA', 0.4);
+    },
+  },
+  frostNova: {
+    name: 'frostNova',
+    cooldown: 7,
+    execute(boss, player) {
+      // AoE slow — damage nearby player and slow them
+      const d = Math.sqrt(dist2(boss.x, boss.y, player.x, player.y));
+      if (d < 120) {
+        player.takeDamage(10);
+        // Apply slow effect via global
+        if (window.__game?.player) {
+          window.__game.player._slowTimer = 3.0;
+          window.__game.player._slowMult = 0.4;
+        }
+        triggerShake(8, 0.3);
+      }
+      // Ring of ice projectiles
+      for (let i = 0; i < 12; i++) {
+        const a = (PI2 / 12) * i;
+        acidProjectiles.push({
+          x: boss.x, y: boss.y,
+          vx: Math.cos(a) * 180, vy: Math.sin(a) * 180,
+          alive: true, life: 2.5, damage: 5,
+          color: '#4DD0E1',
+        });
+      }
+      spawnParticles(boss.x, boss.y, 25, ['#80DEEA', '#4DD0E1', '#E0F7FA', '#FFF'], 150, 0.5, 3);
+      addLight(boss.x, boss.y, 100, '#80DEEA', 0.6);
+      spawnFloatingText(boss.x, boss.y - 20, '冰霜新星!', '#80DEEA');
+    },
+  },
+  iceBarrier: {
+    name: 'iceBarrier',
+    cooldown: 10,
+    execute(boss, player) {
+      // Spawn ice hazards around boss as barriers
+      for (let i = 0; i < 6; i++) {
+        const angle = (PI2 / 6) * i;
+        const d = 50 + Math.random() * 20;
+        const x = boss.x + Math.cos(angle) * d;
+        const y = boss.y + Math.sin(angle) * d;
+        if (window.__game?.hazards) {
+          window.__game.hazards.push({
+            x, y, type: 'ice', radius: 10 + Math.random() * 6,
+            damage: 1, tickTimer: 0, alive: true, life: 12,
+          });
+        }
+      }
+      spawnParticles(boss.x, boss.y, 15, ['#B3E5FC', '#81D4FA', '#4FC3F7'], 100, 0.4, 2);
+      spawnFloatingText(boss.x, boss.y - 20, '冰晶屏障!', '#4FC3F7');
+    },
+  },
+  // Pyro Maniac patterns
+  fireBlast: {
+    name: 'fireBlast',
+    cooldown: 2.2,
+    execute(boss, player) {
+      const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
+      // Triple fireball spread
+      for (let i = -1; i <= 1; i++) {
+        const a = angle + i * 0.25;
+        acidProjectiles.push({
+          x: boss.x, y: boss.y,
+          vx: Math.cos(a) * 280, vy: Math.sin(a) * 280,
+          alive: true, life: 3, damage: 9,
+          color: '#FF6D00',
+        });
+      }
+      audio.acidSpit();
+      addLight(boss.x, boss.y, 50, '#FF6D00', 0.5);
+    },
+  },
+  fireWave: {
+    name: 'fireWave',
+    cooldown: 5,
+    execute(boss, player) {
+      const baseAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+      // Line of fire projectiles
+      for (let i = 0; i < 10; i++) {
+        const a = baseAngle + (i - 5) * 0.06;
+        acidProjectiles.push({
+          x: boss.x, y: boss.y,
+          vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
+          alive: true, life: 2.5, damage: 6,
+          color: '#FF3D00',
+        });
+      }
+      spawnParticles(boss.x, boss.y, 20, ['#FF6D00', '#FF3D00', '#FFAB00', '#FFF'], 180, 0.4, 3);
+      addLight(boss.x, boss.y, 70, '#FF6D00', 0.5);
+      triggerShake(6, 0.2);
+    },
+  },
+  inferno: {
+    name: 'inferno',
+    cooldown: 8,
+    execute(boss, player) {
+      // Fire pools around boss
+      for (let i = 0; i < 5; i++) {
+        const angle = Math.random() * PI2;
+        const d = 25 + Math.random() * 70;
+        const x = boss.x + Math.cos(angle) * d;
+        const y = boss.y + Math.sin(angle) * d;
+        if (window.__game?.hazards) {
+          window.__game.hazards.push({
+            x, y, type: 'fire', radius: 14 + Math.random() * 10,
+            damage: 3, tickTimer: 0, alive: true, life: 8,
+          });
+        }
+      }
+      // Damage nearby player
+      const d = Math.sqrt(dist2(boss.x, boss.y, player.x, player.y));
+      if (d < 90) {
+        player.takeDamage(12);
+        triggerShake(10, 0.3);
+      }
+      spawnParticles(boss.x, boss.y, 30, ['#FF6D00', '#FF3D00', '#FFAB00', '#FF8F00', '#FFF'], 200, 0.6, 4);
+      addLight(boss.x, boss.y, 120, '#FF6D00', 0.7);
+      spawnFloatingText(boss.x, boss.y - 20, '地狱烈焰!', '#FF6D00');
+    },
+  },
   // Iron Fortress patterns
   heavySlam: {
     name: 'heavySlam',
@@ -303,6 +442,34 @@ export const BOSS_DEFS = {
       { hpThreshold: 1.0, patterns: ['heavySlam', 'laserBarrage'], speed: 20 },
       { hpThreshold: 0.5, patterns: ['heavySlam', 'laserBarrage', 'shockwave'], speed: 30 },
       { hpThreshold: 0.25, patterns: ['heavySlam', 'laserBarrage', 'shockwave', 'charge'], speed: 45 },
+    ],
+  },
+  cryo_wraith: {
+    name: '寒冰亡魂',
+    hp: 100,
+    speed: 38,
+    damage: 14,
+    size: 30,
+    color: '#4FC3F7',
+    colorDark: '#0288D1',
+    phases: [
+      { hpThreshold: 1.0, patterns: ['iceSpike', 'frostNova'], speed: 38 },
+      { hpThreshold: 0.55, patterns: ['iceSpike', 'frostNova', 'iceBarrier'], speed: 48 },
+      { hpThreshold: 0.25, patterns: ['iceSpike', 'frostNova', 'iceBarrier', 'charge'], speed: 60 },
+    ],
+  },
+  pyro_maniac: {
+    name: '烈焰狂人',
+    hp: 120,
+    speed: 32,
+    damage: 20,
+    size: 32,
+    color: '#FF6D00',
+    colorDark: '#E65100',
+    phases: [
+      { hpThreshold: 1.0, patterns: ['fireBlast', 'fireWave'], speed: 32 },
+      { hpThreshold: 0.5, patterns: ['fireBlast', 'fireWave', 'inferno'], speed: 42 },
+      { hpThreshold: 0.25, patterns: ['fireBlast', 'fireWave', 'inferno', 'charge'], speed: 55 },
     ],
   },
 };

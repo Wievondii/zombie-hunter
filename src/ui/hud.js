@@ -1,6 +1,7 @@
 import { IW, IH, ZOMBIES_PER_WAVE } from '../config.js';
 import { rgba } from '../utils.js';
 import { POWERUP_TYPES, WEAPON_DATA, SHOP_ITEMS } from '../data.js';
+import { meleeWeapons } from '../entities/melee-weapon.js';
 import { killFeed } from '../systems/killfeed.js';
 import { comboSystem } from '../systems/combo.js';
 import { waveState } from '../systems/waves.js';
@@ -239,10 +240,63 @@ export function drawHUD(c, player, gameTime, score, kills) {
     });
   });
 
+  // ---- Melee weapon slots (right of gun weapons) ----
+  if (meleeWeapons && meleeWeapons.length > 0) {
+    const mwStartX = wStartX + displayWeapons.length * (slotW + 4) + 6;
+    const mwNameSize = FONT.SMALL();
+    const mwSubSize = FONT.TINY();
+    meleeWeapons.forEach((mw, i) => {
+      const wx = mwStartX + i * (slotW + 4);
+      const wy = wbY + 3;
+
+      // Slot background (purple tint to distinguish from guns)
+      c.fillStyle = '#3D3D5C';
+      c.fillRect(wx - 1, wy - 1, slotW + 2, slotH + 2);
+      c.fillStyle = '#2D2D4A';
+      c.fillRect(wx, wy, slotW, slotH);
+      c.fillStyle = '#4A4A7F';
+      c.fillRect(wx, wy, slotW, 1);
+
+      // Weapon name (color-coded by weapon)
+      drawText(c, mw.name, wx + slotW / 2, wy + slotH * 0.3, {
+        size: mwNameSize, color: mw.color || '#FFF', bold: true, align: 'center', baseline: 'middle',
+      });
+
+      // Cooldown status
+      const cd = mw._currentCooldown || 0;
+      const cdText = cd > 0 ? `冷却 ${cd.toFixed(1)}s` : '就绪';
+      drawText(c, cdText, wx + slotW / 2, wy + slotH * 0.7, {
+        size: mwSubSize, color: cd > 0 ? '#FF6666' : '#4CAF50', align: 'center', baseline: 'middle',
+      });
+    });
+  }
+
+  // ---- Skill cooldown (left side above weapon bar) ----
+  const infoY = wbY - smallSize - 4;
+  if (player.special) {
+    const cd = player.abilityCooldown;
+    const cdText = cd > 0 ? `技能冷却: ${cd.toFixed(1)}s` : '技能: 就绪';
+    drawText(c, cdText, pad, infoY, {
+      size: FONT.TINY(), color: cd > 0 ? '#FFD700' : '#4CAF50', bold: true, baseline: 'bottom',
+    });
+  }
+
+  // ---- Rage indicator ----
+  if (player.rageActive) {
+    // Rage text
+    drawText(c, `狂暴 ${player.rageTimer.toFixed(1)}s`, pad + IW * 0.16, infoY, {
+      size: FONT.TINY(), color: '#F44336', bold: true, baseline: 'bottom',
+    });
+    // Red screen border during rage
+    c.strokeStyle = `rgba(244,67,54,${0.25 + 0.15 * Math.sin(player.animTimer * 6)})`;
+    c.lineWidth = 4;
+    c.strokeRect(2, 2, IW - 4, IH - 4);
+    c.lineWidth = 1;
+  }
+
   // ---- Current weapon stats (above weapon bar) ----
   const cwd = player.weaponData;
   if (cwd) {
-    const infoY = wbY - smallSize - 4;
     const info = `伤害:${(cwd.damage * (1 + player.weaponUpgrades.damage) * player.damageMult).toFixed(1)} | 射速:${(1 / player.getEffectiveFireRate()).toFixed(1)}/s${cwd.penetrating ? ' | 穿透' : ''}`;
     drawText(c, info, IW / 2, infoY, {
       size: FONT.TINY(), color: '#999', align: 'center', baseline: 'bottom',

@@ -79,19 +79,24 @@ export const STAGES = [
     description: '最终boss巢穴，蜂巢意识等待着你',
     unlocked: false,
   },
+  {
+    id: 9,
+    name: '冰封地窖',
+    biome: 'lab',
+    waves: 7,
+    boss: 'cryo_wraith',
+    baseDifficulty: 9,
+    description: '极寒之地，寒冰亡魂在冰晶中苏醒',
+    unlocked: false,
+  },
+  {
+    id: 10,
+    name: '熔岩深渊',
+    biome: 'factory',
+    waves: 7,
+    boss: 'pyro_maniac',
+    baseDifficulty: 10,
+    description: '烈焰之地，烈焰狂人在此肆虐',
+    unlocked: false,
+  },
 ];
-
-// Wave composition per difficulty
-export function getWaveComposition(waveNum, baseDifficulty) {
-  const diff = baseDifficulty + Math.floor(waveNum / 3);
-  const count = 15 + waveNum * 2 + diff * 3;
-
-  const types = ['normal'];
-  if (diff >= 2) types.push('runner');
-  if (diff >= 3) types.push('fatty');
-  if (diff >= 4) types.push('spitter');
-  if (diff >= 5) types.push('exploder');
-  if (diff >= 6) types.push('armored');
-
-  return { count, types, difficulty: diff };
-}

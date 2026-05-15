@@ -10,6 +10,15 @@ export const ZOMBIE_TYPES = {
   mutant_tank:  { name: '变异坦克',   hp: 120, speed: 30, damage: 25, color: '#5D4037', colorDark: '#3E2723', colorClothes: '#3E2723', size: 36, coinDrop: [200, 400], xpValue: 200, boss: true },
   mech_walker:  { name: '机甲战士',   hp: 150, speed: 35, damage: 20, color: '#607D8B', colorDark: '#37474F', colorClothes: '#263238', size: 34, coinDrop: [250, 500], xpValue: 250, boss: true },
   hive_mind:    { name: '蜂巢意识',   hp: 200, speed: 25, damage: 30, color: '#E91E63', colorDark: '#880E4F', colorClothes: '#880E4F', size: 40, coinDrop: [300, 600], xpValue: 300, boss: true },
+  cryo_wraith:  { name: '寒冰亡魂',   hp: 100, speed: 38, damage: 14, color: '#4FC3F7', colorDark: '#0288D1', colorClothes: '#01579B', size: 30, coinDrop: [180, 360], xpValue: 180, boss: true },
+  pyro_maniac:  { name: '烈焰狂人',   hp: 120, speed: 32,  damage: 20, color: '#FF6D00', colorDark: '#E65100', colorClothes: '#BF360C', size: 32, coinDrop: [220, 440], xpValue: 220, boss: true },
+
+  // === New zombie types (M3) ===
+  charger:   { name: '冲锋僵尸', hp: 40, speed: 120, damage: 20, size: 16, xpValue: 15, color: '#FF6F00', colorDark: '#BF360C', colorClothes: '#4E342E', coinDrop: [10, 20], skill: 'charge', skillCooldown: 4, skillRange: 150 },
+  summoner:  { name: '召唤僵尸', hp: 80, speed: 50,  damage: 15, size: 20, xpValue: 25, color: '#673AB7', colorDark: '#4A148C', colorClothes: '#311B92', coinDrop: [15, 30], skill: 'summon', skillCooldown: 8, skillRange: 0 },
+  leaper:    { name: '跳跃僵尸', hp: 35, speed: 80,  damage: 18, size: 16, xpValue: 15, color: '#FF9800', colorDark: '#E65100', colorClothes: '#4E342E', coinDrop: [10, 20], skill: 'leap', skillCooldown: 5, skillRange: 120 },
+  freezer:   { name: '冰冻僵尸', hp: 50, speed: 60,  damage: 12, size: 18, xpValue: 20, color: '#00BCD4', colorDark: '#00838F', colorClothes: '#004D40', coinDrop: [12, 25], skill: 'freezeAura', skillCooldown: 0, skillRange: 60 },
+  shielder:  { name: '盾卫僵尸', hp: 120, speed: 55, damage: 18, size: 20, xpValue: 25, color: '#78909C', colorDark: '#546E7A', colorClothes: '#37474F', coinDrop: [20, 40], skill: 'shield', skillCooldown: 0, skillRange: 0 },
 };
 
 export const WEAPON_DATA = {
@@ -20,6 +29,11 @@ export const WEAPON_DATA = {
   sniper:  { name: '狙击枪',   type: 'rifle',   damage: 8,   fireRate: 1.2,  bulletSpeed: 1000, ammoCost: 2, spread: 0.01, bulletColor: '#00BCD4', recoilShake: 5, penetrating: true, description: '超高伤害穿透 | 远程精准' },
   launcher:{ name: '火箭筒',   type: 'launcher', damage: 5,  fireRate: 1.5,  bulletSpeed: 400, ammoCost: 3, spread: 0.05, bulletColor: '#FF5722', recoilShake: 6, penetrating: false, explosive: true, explosionRadius: 50, description: '范围爆炸 | 高弹药消耗' },
   minigun: { name: '加特林',   type: 'smg',     damage: 0.4, fireRate: 0.04, bulletSpeed: 700, ammoCost: 1, spread: 0.15, bulletColor: '#FFCC88', recoilShake: 0.5, penetrating: false, description: '超高射速 | 弹药消耗极快' },
+
+  // === 近战武器 ===
+  melee_knife:  { name: '匕首',     type: 'melee', damage: 25, range: 35, arc: Math.PI * 0.6, cooldown: 0.4,  knockback: 8,  color: '#CCCCCC', weaponKey: 'melee_knife' },
+  melee_axe:    { name: '战斧',     type: 'melee', damage: 50, range: 40, arc: Math.PI * 0.5, cooldown: 0.8,  knockback: 20, color: '#8B4513', weaponKey: 'melee_axe' },
+  melee_sword:  { name: '长剑',     type: 'melee', damage: 35, range: 45, arc: Math.PI * 0.7, cooldown: 0.6,  knockback: 12, color: '#B0C4DE', weaponKey: 'melee_sword' },
 };
 
 export const SHOP_ITEMS = [
@@ -34,6 +48,11 @@ export const SHOP_ITEMS = [
   { id: 'health',       name: '医疗包',     price: 80,  type: 'health',  amount: 35 },
   { id: 'upgrade_dmg',  name: '伤害升级',   price: 300, type: 'upgrade', stat: 'damage',   amount: 0.15, desc: '所有武器伤害+15%' },
   { id: 'upgrade_speed',name: '射速升级',   price: 250, type: 'upgrade', stat: 'fireRate',  amount: -0.03, desc: '所有武器射速+10%' },
+
+  // === 近战武器 ===
+  { id: 'melee_knife', name: '匕首',   type: 'melee', price: 100, weaponKey: 'melee_knife', desc: '快速近战武器' },
+  { id: 'melee_axe',   name: '战斧',   type: 'melee', price: 200, weaponKey: 'melee_axe',   desc: '高伤害近战武器' },
+  { id: 'melee_sword', name: '长剑',   type: 'melee', price: 150, weaponKey: 'melee_sword', desc: '均衡近战武器' },
 ];
 
 export const POWERUP_TYPES = {
