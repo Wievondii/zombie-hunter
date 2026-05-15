@@ -109,6 +109,7 @@ function initGame(characterId) {
 
   clearBullets(); clearZombies(); clearPickups(); clearPowerups(); clearHazards(); clearAll();
   turrets.length = 0;
+  meleeWeapons.length = 0;
   score = 0; kills = 0; gameTime = 0; heartbeatTimer = 0;
   resetWaves();
   comboSystem.reset();
@@ -231,10 +232,9 @@ function handleInput() {
   if (meleePressed && flow.state === FlowState.PLAYING && player?.alive) {
     if (keys['tab']) accumulatedMeleeKey = true;
     for (const w of meleeWeapons) {
-      const prevSwing = w.swingTimer;
       const hits = w.attack(player, zombies, zombieGrid);
-      // Play swing sound when weapon actually attacked (was not on cooldown)
-      if (prevSwing === 0 && w.swingTimer > 0) audio.zombieHit();
+      // Play hit sound only when weapon lands a blow
+      if (hits.length > 0) audio.zombieHit();
       for (const hit of hits) {
         const z = hit.zombie;
         const dx = z.x - player.x;

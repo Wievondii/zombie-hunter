@@ -214,7 +214,7 @@ export class Player {
         x: bx, y: by,
         vx: Math.cos(angle) * 200,
         vy: Math.sin(angle) * 200,
-        damage: 60,
+        damage: 60 * this.damageMult,
         penetrating: false,
         color: '#FF6F00',
         alive: true,
@@ -455,8 +455,8 @@ export function updateTurrets(dt, zombies, bullets) {
       }
       if (nearest) {
         const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
-        t.x += Math.cos(angle) * t.speed * dt;
-        t.y += Math.sin(angle) * t.speed * dt;
+        t.x = clamp(t.x + Math.cos(angle) * t.speed * dt, 10, IW - 10);
+        t.y = clamp(t.y + Math.sin(angle) * t.speed * dt, 10, IH - 10);
       }
     }
 
