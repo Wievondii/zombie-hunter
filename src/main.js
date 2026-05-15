@@ -121,6 +121,8 @@ function startStage(stageId) {
   tileMap = new TileMap(stage.biome);
   flow.selectedStage = stage;
   initGame(flow.selectedCharacter);
+  // Apply stage wave count (override hardcoded default in resetWaves)
+  waveState.stageWaves = stage.waves || 10;
   tutorial.activeStep = 0;
   tutorial.timer = 0;
   tutorial.completed = false;
