@@ -79,6 +79,25 @@
 - **验证方法**：确认 `isMinion=true` 的僵尸死亡时 `comboSystem.onKill()` 不再被调用
 
 ### Bug #B3：跳跃僵尸可能瞬移到墙内/地图外
+
+- **错误类型**：A. 模块内错误
+- **原因分析**：`_updateLeapSkill()` 计算的 `leapTarget` 未做边界检查，可能落在地图外的无效区域（墙壁外），导致僵尸卡死
+- **改动内容**：
+  - 设置 `leapTarget` 时使用 `clamp()` 限制到 `[20, IW-20]` × `[20, IH-20]` 安全区域
+  - 瞬移落地时同样对 `this.x` / `this.y` 做 `clamp()` 兜底
+- **关键代码行**：`_updateLeapSkill()` 第 229-230 行（leapTarget 设置）和第 217-218 行（实际瞬移）
+- **验证方法**：确认 `clamp()` 后 `leapTarget` 的 x/y 不超出地图边界
+
+### Bug：plague_spreader / shadow_assassin / iron_fortress 在 ZOMBIE_TYPES 中缺失
+- **错误类型**：A. 模块内错误
+- **原因分析**：这 3 个 boss 类型定义在 `BOSS_DEFS` 和 `stages.js` 中有引用，并在 `zombie.js` 的 draw() 中有专属渲染，但在 `ZOMBIE_TYPES` 中缺失。Zombie 构造函数执行 `const d = ZOMBIE_TYPES[type]` 时返回 `undefined`，后续访问 `d.hp` 等属性时崩溃
+- **改动内容**：在 `src/data.js` 的 `ZOMBIE_TYPES` 中补充 3 个 boss 定义：
+  - `plague_spreader`（瘟疫散布者，stage 3 boss）：hp=100, size=28, boss:true, color=#4CAF50
+  - `shadow_assassin`（暗影刺客，stage 5 boss）：hp=90, size=26, boss:true, color=#7B1FA2
+  - `iron_fortress`（钢铁堡垒，stage 7 boss）：hp=180, size=38, boss:true, color=#607D8B
+- **关键代码行**：`src/data.js` 第 15-17 行（新增的 3 个 boss 定义）
+- **验证方法**：构建通过；stage 3/5/7 可正常生成 boss，击杀后触发通关逻辑
+- **Git commit**：`3620a9e` — `fix(data): add missing ZOMBIE_TYPES for plague_spreader, shadow_assassin, iron_fortress`
 - **错误类型**：A. 模块内错误
 - **原因分析**：`_updateLeapSkill()` 计算的 `leapTarget` 未做边界检查，可能落在地图外的无效区域（墙壁外），导致僵尸卡死
 - **改动内容**：

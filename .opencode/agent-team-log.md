@@ -604,4 +604,125 @@ fix: 修复关卡波次数未应用导致无法通关的问题
 
 ---
 
+## 🧪 验证：第三关通关流程修复
+
+### 验证任务
+- **Bug**：第三关打完所有僵尸后未触发通关流程
+- **修复**：`src/main.js` 的 `startStage()` 中新增 `waveState.stageWaves = stage.waves || 10;`
+
+### 验证步骤与结果
+
+| 步骤 | 验证内容 | 结果 |
+|------|---------|------|
+| 1 | `src/main.js` 第125行确认修复存在 | ✅ `waveState.stageWaves = stage.waves || 10;` 在 `initGame()` 之后正确设置 |
+| 2 | `src/data/stages.js` 确认各关卡 waves 配置 | ✅ 关卡1-8 waves=6，关卡9-10 waves=7 |
+| 3 | `src/systems/waves.js` 的 `advanceWave()` 确认通关逻辑 | ✅ 第75行 `!stageBoss && waveState.number > waveState.stageWaves` 触发 `onStageComplete` |
+| 4 | 验证第三关 waves=6 的通关链路 | ⚠️ 见下方分析 |
+| 5 | `npm run build` 构建验证 | ✅ 42 modules transformed, 119.74 kB |
+
+### 修复逻辑分析
+
+**修复前的问题链：**
+1. `initGame()` → `resetWaves()` → `waveState.stageWaves = 10`（硬编码）
+2. 第三关实际只有 6 波僵尸
+3. 第 6 波完成后 `advanceWave()` 中 `waveState.number` 变为 7
+4. `7 > 10` 为 false，`onStageComplete` 永远不会触发
+
+**修复后的正确链：**
+1. `initGame()` → `resetWaves()` → `waveState.stageWaves = 10`
+2. `startStage()` → `waveState.stageWaves = stage.waves` → 6（第三关）
+3. 第 6 波完成后 `waveState.number` 变为 7
+4. `7 > 6` 为 true，`onStageComplete()` 被调用 → 2秒倒计时 → `endStage(true)`
+
+### ⚠️ 额外发现的问题
+
+在验证过程中发现**第三关有 boss（`plague_spreader`）**，通关逻辑应走 boss 路线而非普通路线：
+
+- 第三关配置：`boss: 'plague_spreader'`（stages.js 第27行）
+- Boss 通关路径：`registerKill()` 第347行 `z.boss && waveState.bossWave` → 设置 `stageCompleteTimer`
+- `advanceWave()` 第68行：`stageBoss && waveState.number === waveState.stageWaves` → 标记 `bossWave = true`
+
+**但 `plague_spreader` 在 `ZOMBIE_TYPES`（data.js）中缺失定义！** 只有 `BOSS_DEFS`（BossAI.js）中有定义。
+
+这意味着：
+- `new Zombie('plague_spreader', ...)` 时，`ZOMBIE_TYPES['plague_spreader']` 返回 `undefined`
+- `this.boss = d.boss || false` → `this.boss = false`
+- Boss 被击杀时 `z.boss` 为 false，boss 通关逻辑不触发
+
+**同样缺失的 boss 类型：**
+- `plague_spreader`（第三关）
+- `shadow_assassin`（第五关）
+- `iron_fortress`（第七关）
+
+**这是一个独立的 Bug，不在本次修复范围内，但需要后续修复。**
+
+### 验证结论
+
+| 项目 | 结论 |
+|------|------|
+| 本次修复（`waveState.stageWaves`） | ✅ 修复正确，逻辑链路完整 |
+| 构建验证 | ✅ 通过 |
+| 额外发现的 Bug | ⚠️ 3个 boss 类型在 `ZOMBIE_TYPES` 中缺失定义，需后续修复 |
+
+### 建议后续修复
+
+在 `src/data.js` 的 `ZOMBIE_TYPES` 中补充以下 boss 定义：
+
+```javascript
+plague_spreader:  { name: '瘟疫散布者', hp: 100, speed: 35, damage: 18, color: '#4CAF50', colorDark: '#2E7D32', colorClothes: '#1B5E20', size: 28, coinDrop: [150, 300], xpValue: 150, boss: true },
+shadow_assassin:  { name: '暗影刺客',   hp: 90,  speed: 55, damage: 22, color: '#7B1FA2', colorDark: '#4A148C', colorClothes: '#311B92', size: 26, coinDrop: [120, 240], xpValue: 120, boss: true },
+iron_fortress:    { name: '钢铁堡垒',   hp: 180, speed: 20, damage: 28, color: '#607D8B', colorDark: '#37474F', colorClothes: '#263238', size: 38, coinDrop: [250, 500], xpValue: 250, boss: true },
+```
+
+---
+
+## 🔍 Bug修复审查：补充缺失的Boss类型定义
+
+### 审查结论
+**✅ 通过** — 修复正确，构建通过，代码已提交
+
+### Bug 分析
+
+| 项目 | 内容 |
+|------|------|
+| **Bug 描述** | 3 个 boss 类型（plague_spreader、shadow_assassin、iron_fortress）在 ZOMBIE_TYPES 中缺失定义 |
+| **根因** | 这 3 个 boss 在 `BOSS_DEFS`（BossAI.js）和 `stages.js` 中有引用，但 `ZOMBIE_TYPES`（data.js）中缺失。Zombie 构造函数执行 `const d = ZOMBIE_TYPES[type]` 时返回 `undefined`，导致后续访问 `d.hp` 等属性时崩溃 |
+| **修复位置** | `src/data.js` 第 16-18 行 |
+| **修复内容** | 在 `ZOMBIE_TYPES` 中补充 3 个 boss 定义 |
+
+### 审查验证
+
+| 检查项 | 结果 | 说明 |
+|--------|------|------|
+| 格式与现有 boss 一致 | ✅ | 包含所有必需字段：name, hp, speed, damage, color, colorDark, colorClothes, size, coinDrop, xpValue, boss:true |
+| 属性值与 BOSS_DEFS 一致 | ✅ | hp/speed/damage/size/color 与 BossAI.js 中定义完全匹配 |
+| 与 stages.js 引用匹配 | ✅ | stage 3=plague_spreader, stage 5=shadow_assassin, stage 7=iron_fortress |
+| boss 属性设置正确 | ✅ | `boss: true` 确保触发 boss 通关逻辑 |
+| coinDrop/xpValue 合理 | ✅ | 与同级别 boss（necromancer, mutant_tank）相当 |
+| 无副作用 | ✅ | 纯数据添加，不影响其他逻辑 |
+| 构建通过 | ✅ | 42 modules transformed, 120.23 kB |
+
+### 修复逻辑分析
+
+**修复前的问题链：**
+1. `new Zombie('plague_spreader', x, y)` 被调用
+2. `const d = ZOMBIE_TYPES['plague_spreader']` → `undefined`
+3. `this.hp = d.hp * ...` → **TypeError: Cannot read properties of undefined**
+4. 游戏崩溃，boss 无法生成
+
+**修复后的正确链：**
+1. `new Zombie('plague_spreader', x, y)` 被调用
+2. `const d = ZOMBIE_TYPES['plague_spreader']` → 返回正确的定义对象
+3. `this.boss = d.boss || false` → `true`
+4. `if (this.boss && BOSS_DEFS[type])` → 初始化 BossController
+5. Boss 属性被 BOSS_DEFS 覆盖（hp=100, speed=35, damage=18, size=28）
+6. Boss 被击杀时 `z.boss` 为 true，触发 boss 通关逻辑
+
+### 提交信息
+```
+fix(data): add missing ZOMBIE_TYPES for plague_spreader, shadow_assassin, iron_fortress
+```
+
+---
+
 ## 📊 Agent 状态（历史）
