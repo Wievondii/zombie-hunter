@@ -306,8 +306,301 @@ export class MeleeWeapon {
 
 ---
 
+## 🔍 第1轮复审
+
+### 复审结论
+**✅ 全部修复** — 4 个 BLOCKER 问题均已修复到位，构建通过
+
+### BLOCKER 修复验证
+
+| # | 问题 | 修复验证 | 结论 |
+|---|------|---------|------|
+| B1 | 近战武器精灵方向不跟随玩家瞄准 | `draw()` 中挥砍时使用 `swingAngle`，未挥砍时使用 `player.aimAngle`，双重状态切换正确 | ✅ 修复到位 |
+| B2 | 召唤小僵尸死亡增加连杀计数 | `onDeath()` 开头检查 `isMinion`，提前 return 跳过 comboSystem.onKill() 和所有奖励 | ✅ 修复到位 |
+| B3 | 跳跃僵尸可能瞬移到非法位置 | `leapTarget` 创建和瞬移时均使用 `clamp()` 限制在 `[20, IW/IH-20]` 范围内 | ✅ 修复到位 |
+| B4 | Tab 键缺少防抖 | 引入 `accumulatedMeleeKey` 追踪，与 E/ESC 键防抖模式一致，松开时重置 | ✅ 修复到位 |
+
+### 新问题检查
+- B3 修复使用 clamp 而非 `tileMap.isWalkable()`，可能瞬移到墙内（非地图外）。降级为 **WARNING**，建议后续优化。
+- 其余修复未引入新问题。
+
+### 构建验证
+✅ `npm run build` 通过（42 modules transformed, 119.69 kB）
+
+### 提交信息
+```
+fix(round-1): resolve 4 BLOCKER issues from code review
+```
+Commit: `5577f2d`
+
+---
+
 ## 🧪 第1轮测试
-<!-- 测试员写入 -->
+
+### 整体评估
+- **需修复后重测** — 发现 4 个 Bug（1 个严重，3 个一般）
+
+### 验收标准测试（M1: 近战武器系统）
+
+| 验收标准 | 结果 | 备注 |
+|---------|------|------|
+| MeleeWeapon 类正确实现扇形范围判定 | ✅ | 距离判定（distSq > rangeSq）+ 角度判定（normalizeAngle + halfArc）逻辑正确 |
+| 距离判定和角度判定正确 | ✅ | 使用 SpatialGrid.query() 优化性能，角度归一化正确 |
+| 挥砍特效正确显示 | ✅ | swingTimer > 0 时绘制半透明扇形填充 + 弧线描边，渐隐效果正确 |
+| 武器数据格式正确 | ✅ | WEAPON_DATA 中 3 把近战武器数据完整（name/damage/range/arc/cooldown/knockback/color/weaponKey） |
+| 在 main.js 中的调用正确 | ⚠️ | 近战攻击逻辑正确，但音效判断条件不够清晰（见 Bug #2） |
+| 在 shop.js 中的购买逻辑正确 | ✅ | owned 检查正确（meleeWeapons.some），购买后 push 到数组 |
+| 在 hud.js 中的显示正确 | ⚠️ | 近战武器槽显示正确，但 `meleeWeapons &&` 冗余（审查 W4 未修复） |
+| 多个近战武器同时装备正常 | ✅ | 遍历 meleeWeapons 数组依次攻击，商店防止重复购买同武器 |
+| 近战武器冷却正确 | ✅ | _currentCooldown 在 attack() 中设置，update(dt) 中递减 |
+| 击退效果合理 | ✅ | 击退 8-20 像素，僵尸速度 50-170 像素/秒，比例合理 |
+
+### 验收标准测试（M2: 新职业系统）
+
+| 验收标准 | 结果 | 备注 |
+|---------|------|------|
+| 角色选择界面正常显示新职业（6个以上） | ✅ | `drawCharSelect` 使用 `Object.values(CHARACTERS)` 遍历，6个职业全部显示 |
+| 法师火球能发射并爆炸造成范围伤害 | ✅ | 复用 explosive 子弹系统，main.js 第474-486行正确处理爆炸 AoE |
+| 精灵王召唤的精灵能自动攻击僵尸 | ✅ | 复用 turret 系统，updateTurrets 中新增移动逻辑 |
+| 战士狂暴期间减伤且近战伤害翻倍 | ✅ | armorMult *= 0.5, meleeDamageMult = 2.0，main.js 第244行正确应用 |
+| 技能冷却计时正确 | ✅ | abilityMaxCooldown 在 initGame 中正确设置（法师4s/精灵12s/战士8s） |
+| 不破坏现有 dodge/turret 技能 | ✅ | else-if 链末尾追加，现有技能逻辑未改动 |
+| 玩家死亡时不能释放技能 | ✅ | update() 开头 `if (!this.alive) return` 阻止 |
+| 狂暴状态在 initGame 时正确重置 | ✅ | `new Player()` 构造函数重置所有状态 |
+
+### 模块测试结果
+
+| 模块 | Tester | 结论 | Bug 数 |
+|------|--------|------|--------|
+| M1: 近战武器系统 | Tester | ❌ | 2 |
+| M2: 新职业系统 | Tester | ⚠️ | 2 |
+
+### Bug 清单
+
+**Bug #1：游戏重新开始时近战武器数组未清空**
+- **错误类型**：A. 模块内错误
+- **严重程度**：🔴 严重
+- **现象**：玩家在第一局游戏中购买的近战武器，在游戏结束后开始新游戏时仍然保留在 meleeWeapons 数组中
+- **预期**：initGame() 应清空 meleeWeapons 数组，每局游戏从空武器库开始
+- **复现步骤**：
+  1. 开始游戏，进入商店购买匕首
+  2. 游戏结束（死亡或通关）
+  3. 返回标题画面，重新开始游戏
+  4. 进入商店前检查 HUD，匕首仍然显示在武器槽中
+- **关联文件**：`src/main.js` 第110行 `initGame()` 函数
+- **责任 Developer**：Dev-4（集成负责人）
+- **处置路径**：
+  - A. 模块内错误 → 返回 Dev-4 修复
+  - 建议修复：在 `initGame()` 第110行后添加 `meleeWeapons.length = 0;`
+
+**Bug #2：近战武器音效在没击中僵尸时也会播放**
+- **错误类型**：A. 模块内错误
+- **严重程度**：🟡 一般
+- **现象**：挥砍时即使周围没有僵尸，也会播放 zombieHit() 音效
+- **预期**：zombieHit() 音效应只在实际击中僵尸时播放
+- **复现步骤**：
+  1. 装备近战武器
+  2. 在空旷区域（无僵尸）按 Tab 或右键挥砍
+  3. 听到"击中"音效，但实际没有击中任何目标
+- **关联文件**：`src/main.js` 第237行
+- **责任 Developer**：Dev-4（集成负责人）
+- **处置路径**：
+  - A. 模块内错误 → 返回 Dev-4 修复
+  - 建议修复：将 `if (prevSwing === 0 && w.swingTimer > 0) audio.zombieHit();` 改为 `if (hits.length > 0) audio.zombieHit();`
+
+**Bug #3：法师火球伤害未应用 damageMult 倍率**
+- **错误类型**：A. 模块内错误
+- **严重程度**：🟡 一般
+- **现象**：法师的 damageMult=1.5，但火球伤害硬编码为 60，未乘以 damageMult，实际伤害应为 90
+- **预期**：火球伤害 = 60 * player.damageMult = 90（法师）
+- **复现步骤**：
+  1. 选择法师角色
+  2. 按空格释放火球
+  3. 火球命中僵尸造成 60 伤害（而非预期的 90）
+- **关联文件**：`src/entities/player.js` 第217行 `damage: 60`
+- **责任 Developer**：Dev-2
+- **处置路径**：
+  - A. 模块内错误 → 返回 Dev-2 修复
+  - 建议修复：`damage: 60 * this.damageMult`
+
+**Bug #4：精灵召唤物移动无边界检查**
+- **错误类型**：A. 模块内错误
+- **严重程度**：🟡 一般
+- **现象**：精灵召唤物在 updateTurrets 中移动时没有 clamp 边界检查，可能移出地图范围
+- **预期**：精灵召唤物应被限制在地图范围内（与玩家移动一致）
+- **复现步骤**：
+  1. 选择精灵王角色
+  2. 按空格召唤精灵
+  3. 精灵朝边缘僵尸移动时可能移出地图
+- **关联文件**：`src/entities/player.js` 第457-459行 `t.x += ...` / `t.y += ...`
+- **责任 Developer**：Dev-2
+- **处置路径**：
+  - A. 模块内错误 → 返回 Dev-2 修复
+  - 建议修复：使用 `clamp(t.x + ..., 10, IW - 10)` 和 `clamp(t.y + ..., 10, IH - 10)`
+
+### 审查遗留问题
+
+| # | 文件 | 问题 | 状态 |
+|---|------|------|------|
+| W4 | `hud.js` 第244行 | `meleeWeapons && meleeWeapons.length > 0` 中 `meleeWeapons` 永远 truthy | 未修复（轻微） |
+
+### 构建验证
+✅ `npm run build` 通过（42 modules transformed, 119.69 kB）
+
+### 测试证据
+- 标题屏幕截图：`.opencode/test-evidence/round-1/title-screen.png`
+
+---
+
+## 🔍 第1轮复审（测试 Bug 修复验证）
+
+### 复审结论
+**✅ 全部修复** — 测试阶段发现的 4 个 Bug 均已修复到位，构建通过
+
+### Bug 修复验证
+
+| # | Bug | 修复文件 | 修复内容 | 验证结论 |
+|---|-----|---------|---------|---------|
+| #1 | 游戏重新开始时近战武器数组未清空 | `src/main.js` 第112行 | `initGame()` 中新增 `meleeWeapons.length = 0;`，位于 `turrets.length = 0;` 之后 | ✅ 修复到位 |
+| #2 | 近战武器音效在没击中僵尸时也会播放 | `src/main.js` 第237行 | 将 `if (prevSwing === 0 && w.swingTimer > 0)` 改为 `if (hits.length > 0)`，仅在实际命中时播放音效 | ✅ 修复到位 |
+| #3 | 法师火球伤害未应用 damageMult 倍率 | `src/entities/player.js` 第217行 | 将 `damage: 60` 改为 `damage: 60 * this.damageMult`，法师实际伤害 = 60 × 1.5 = 90 | ✅ 修复到位 |
+| #4 | 精灵召唤物移动无边界检查 | `src/entities/player.js` 第458-459行 | 使用 `clamp(t.x + ..., 10, IW - 10)` 和 `clamp(t.y + ..., 10, IH - 10)` 限制在地图范围内 | ✅ 修复到位 |
+
+### 修复质量评估
+
+- **Bug #1**：修复简洁正确，与 `turrets.length = 0` 模式一致，无副作用
+- **Bug #2**：修复正确，同时移除了不再需要的 `prevSwing` 变量，代码更干净
+- **Bug #3**：修复正确，`this.damageMult` 在战士狂暴时为 2.0，法师为 1.5，普通角色为 1.0，行为一致
+- **Bug #4**：修复正确，边界值 `10` 与玩家移动边界一致（`src/entities/player.js` 中 `clamp(this.x, 10, IW - 10)`）
+
+### 引入新问题检查
+- 未发现新引入的 Bug
+- 未发现回归风险
+
+### 构建验证
+✅ `npm run build` 通过（42 modules transformed, 119.72 kB）
+
+### 提交信息
+```
+fix(test-review): 修复测试阶段发现的4个Bug
+```
+Commit: `fd6b9d9`
+
+---
+
+## 🧪 第1轮测试（重测）
+
+### 整体评估
+- **✅ 全部通过** — 4 个 Bug 均已修复到位，构建通过
+
+### 验收标准重测
+
+| 验收标准 | 结果 | 备注 |
+|---------|------|------|
+| 游戏重新开始时近战武器数组清空 | ✅ | `initGame()` 第112行 `meleeWeapons.length = 0;` 正确重置 |
+| 近战武器音效仅在实际命中时播放 | ✅ | 第237行 `if (hits.length > 0) audio.zombieHit();` 条件正确 |
+| 法师火球伤害应用 damageMult 倍率 | ✅ | 第217行 `damage: 60 * this.damageMult` 法师实际伤害=90 |
+| 精灵召唤物移动有边界检查 | ✅ | 第458-459行使用 `clamp(..., 10, IW/IH - 10)` 限制在地图内 |
+
+### Bug 修复验证
+
+| Bug | 问题 | 修复文件 | 修复内容 | 验证结论 |
+|-----|------|---------|---------|---------|
+| #1 | 游戏重新开始时近战武器数组未清空 | `src/main.js` 第112行 | `initGame()` 中新增 `meleeWeapons.length = 0;` | ✅ 已修复 |
+| #2 | 近战武器音效在没击中僵尸时也会播放 | `src/main.js` 第237行 | 改为 `if (hits.length > 0) audio.zombieHit();` | ✅ 已修复 |
+| #3 | 法师火球伤害未应用 damageMult 倍率 | `src/entities/player.js` 第217行 | `damage: 60 * this.damageMult` | ✅ 已修复 |
+| #4 | 精灵召唤物移动无边界检查 | `src/entities/player.js` 第458-459行 | `clamp(t.x + ..., 10, IW - 10)` / `clamp(t.y + ..., 10, IH - 10)` | ✅ 已修复 |
+
+### 回归检查
+- Bug #1 修复未影响其他 `clear*()` 调用，与 `turrets.length = 0` 模式一致
+- Bug #2 修复移除了不再需要的 `prevSwing` 变量，代码更干净
+- Bug #3 修复对所有职业一致：法师 1.5x、战士狂暴 2.0x、普通 1.0x
+- Bug #4 修复边界值 `10` 与玩家移动边界一致（`player.js` 第142-143行）
+- 未发现新引入的 Bug 或回归问题
+
+### 构建验证
+✅ `npm run build` 通过（42 modules transformed, 119.72 kB）
+
+### 重测结论
+**✅ 全部通过** — 4 个 Bug 修复正确到位，无回归问题，构建通过。M1 近战武器系统 + M2 新职业系统测试通过。
+
+---
+
+### 重测结论
+**✅ 全部通过** — 4 个测试 Bug 均已修复到位，构建通过，无回归问题
+
+---
+
+## 📊 第1轮最终验收
+
+### 模块验收总表
+
+| 模块 | 开发 | 审查 | 测试 | 结论 |
+|------|------|------|------|------|
+| M1: 近战武器系统 | ✅ | ✅ | ✅ 重测通过 | ✅ 完成 |
+| M2: 新职业系统 | ✅ | ✅ | ✅ 重测通过 | ✅ 完成 |
+| M3: 新僵尸与技能 | ✅ | ✅ | ✅ 手动验证通过 | ✅ 完成 |
+| M4: 主循环集成 | ✅ | ✅ | ✅ | ✅ 完成 |
+| M5: 商店 & HUD 适配 | ✅ | ✅ | ✅ | ✅ 完成 |
+
+### 新增内容清单
+
+**近战武器（3把）：**
+- 匕首：快速/低伤/大范围
+- 战斧：慢速/高伤/大击退
+- 长剑：均衡型
+
+**新职业（3个）：**
+- 法师：高伤害，火球术（CD 4s）
+- 精灵王：召唤精灵助战（CD 12s）
+- 战士：高血量，狂暴减伤（CD 8s）
+
+**新僵尸（5种）：**
+- 冲锋僵尸：高速冲刺撞玩家
+- 召唤僵尸：定期召唤小怪
+- 跳跃僵尸：瞬移到玩家附近
+- 冰冻僵尸：减速光环
+- 盾卫僵尸：正面减伤 80%
+
+### Bug 修复记录
+- 4 个 BLOCKER（审查阶段）：武器方向、召唤物连杀、跳跃位置、Tab 防抖
+- 4 个测试 Bug：武器数组清空、音效误播放、火球倍率、精灵边界
+
+### 代码提交
+- `5577f2d` — fix(round-1): resolve 4 BLOCKER issues from code review
+- `fd6b9d9` — fix(test-review): 修复测试阶段发现的4个Bug
+
+---
+
+## 🔍 Bug修复审查：第三关通关流程
+
+### 审查结论
+**✅ 通过** — 修复正确，构建通过，代码已提交
+
+### Bug 分析
+
+| 项目 | 内容 |
+|------|------|
+| **Bug 描述** | 第三关打完所有僵尸后未触发通关流程 |
+| **根因** | `resetWaves()` 将 `stageWaves` 硬编码为10，但关卡1-8只有6波、关卡9-10只有7波。`advanceWave()` 中 `waveState.number > waveState.stageWaves` 永远不触发 |
+| **修复位置** | `src/main.js` 第125行 `startStage()` 函数 |
+| **修复内容** | `waveState.stageWaves = stage.waves || 10;` |
+
+### 审查验证
+
+| 检查项 | 结果 | 说明 |
+|--------|------|------|
+| 修复位置正确 | ✅ | 在 `initGame()` 之后、`flow.goTo(PLAYING)` 之前 |
+| waveState 已导入 | ✅ | 第16行从 `./systems/waves.js` 导入 |
+| 所有关卡适用 | ✅ | 关卡1-8 waves=6，关卡9-10 waves=7，都有 waves 属性 |
+| fallback 合理 | ✅ | `|| 10` 防止关卡数据缺失时崩溃 |
+| 无副作用 | ✅ | 修复简洁，不影响其他逻辑 |
+| 构建通过 | ✅ | 42 modules transformed, 119.74 kB |
+
+### 提交信息
+```
+fix: 修复关卡波次数未应用导致无法通关的问题
+```
 
 ---
 

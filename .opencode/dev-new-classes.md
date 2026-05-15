@@ -77,6 +77,22 @@
 - [x] 技能冷却计时正确（使用 abilityMaxCooldown，由 Dev-4 在 main.js 中设置）
 - [x] 不破坏现有 dodge/turret 技能（else-if 链末尾追加）
 
+## 修复记录
+
+### Bug #3：法师火球伤害未应用 damageMult 倍率
+- **错误类型**：A. 模块内错误
+- **原因分析**：`mage_fireball` case 中火球 damage 写死为 60，未乘以 `this.damageMult`，导致法师的 1.5 倍伤害加成未生效
+- **改动内容**：`src/entities/player.js` 第 217 行 `damage: 60` → `damage: 60 * this.damageMult`
+- **关键代码行**：`damage: 60 * this.damageMult,`
+- **验证方法**：构建通过，法师火球伤害将正确应用 damageMult 倍率
+
+### Bug #4：精灵召唤物移动无边界检查
+- **错误类型**：A. 模块内错误
+- **原因分析**：`updateTurrets()` 中精灵朝僵尸移动时直接累加坐标，未使用 `clamp` 限制范围，可能导致精灵移出画布
+- **改动内容**：`src/entities/player.js` 第 458-459 行精灵坐标更新改用 `clamp()` 限制在 `[10, IW-10]` 和 `[10, IH-10]` 范围内
+- **关键代码行**：`t.x = clamp(t.x + ... , 10, IW - 10); t.y = clamp(t.y + ... , 10, IH - 10);`
+- **验证方法**：构建通过，精灵移动受边界限制
+
 ## 备注
 - `abilityMaxCooldown` 默认值 3，各职业实际 CD 需由 Dev-4 在 `main.js` 初始化角色时设置：
   - 法师：abilityMaxCooldown=4
