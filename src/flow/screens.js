@@ -128,27 +128,26 @@ export function drawCharSelect(c, mouseX, mouseY) {
     c.strokeRect(x, y, cardW, cardH);
     c.lineWidth = 1;
 
-    // Character icon (24x24)
+    // Character icon (20x20)
     c.fillStyle = ch.color;
-    const iconSize = 24;
-    c.fillRect(x + cardW / 2 - iconSize / 2, y + 6, iconSize, iconSize);
+    c.fillRect(x + cardW / 2 - 10, y + 4, 20, 20);
 
     // Name
-    drawText(c, ch.name, x + cardW / 2, y + 36, { size: FONT.BODY(), color: '#FFD700', bold: true, align: 'center' });
+    drawText(c, ch.name, x + cardW / 2, y + 30, { size: FONT.BODY(), color: '#FFD700', bold: true, align: 'center' });
 
     // Stats (compact: HP + speed on one line)
-    drawText(c, `HP:${ch.hp} 速度:${ch.speed}`, x + cardW / 2, y + 52, { size: FONT.TINY(), color: '#AAA', align: 'center' });
-    drawText(c, `伤害:${Math.round(ch.damageMult * 100)}%`, x + cardW / 2, y + 63, { size: FONT.TINY(), color: '#AAA', align: 'center' });
+    drawText(c, `HP:${ch.hp} 速度:${ch.speed}`, x + cardW / 2, y + 44, { size: FONT.TINY(), color: '#AAA', align: 'center' });
+    drawText(c, `伤害:${Math.round(ch.damageMult * 100)}%`, x + cardW / 2, y + 54, { size: FONT.TINY(), color: '#AAA', align: 'center' });
 
     // Description
-    drawText(c, ch.desc, x + cardW / 2, y + 78, { size: FONT.TINY(), color: '#888', align: 'center' });
+    drawText(c, ch.desc, x + cardW / 2, y + 65, { size: FONT.TINY(), color: '#888', align: 'center' });
 
-    // Skill tooltip on hover
-    if (hovered && ch.special) {
+    // Skill tooltip (always visible if character has special ability)
+    if (ch.special) {
       const si = SKILL_INFO[ch.special];
       if (si) {
         const ttY = y + cardH - 2;
-        const ttH = 26;
+        const ttH = 18;
         c.fillStyle = 'rgba(0,0,0,0.85)';
         c.fillRect(x + 2, ttY - ttH, cardW - 4, ttH);
         drawText(c, `${si.name} CD:${si.cd}`, x + cardW / 2, ttY - ttH / 2, {
