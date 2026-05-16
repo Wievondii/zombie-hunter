@@ -127,6 +127,64 @@
 - [x] 无死代码（所有新增类/方法/数组在至少一处被调用）
 - [x] 无循环依赖（main.js 为消费者，不被其他模块导入）
 
+## 第2轮集成检查
+
+### 检查范围
+- **M1**: 角色选择页面布局修复（Dev-1: screens.js drawCharSelect）
+- **M2**: 技能视觉增强（Dev-2: player.js + main.js）
+- **M3**: HUD优化 & 详情增强（Dev-3: hud.js + screens.js）
+
+### 集成链路验证
+
+| 链路 | 发送方 | 接收方 | 状态 |
+|------|--------|--------|------|
+| drawCharSelect → main.js 点击处理 | screens.js (hovereds[]) | main.js (charSelectLayout.hovereds) | ✅ |
+| createParticle 火球拖尾 | main.js (bullet loop) | particles[] → drawParticle | ✅ |
+| createParticle 爆炸环 | main.js (explosive) | particles[] → drawParticle | ✅ |
+| triggerShake 爆炸震动 | main.js (explosive) | effects.js screen shake | ✅ |
+| createParticle 精灵光柱 | player.js (elf_summon) | particles[] → drawParticle | ✅ |
+| 精灵召唤物绘制增强 | player.js (drawTurrets) | canvas arc/fillRect | ✅ |
+| 战士狂暴外观 | player.js (draw) | canvas draw+aura | ✅ |
+| meleeWeapons.length hud.js | hud.js (melee slot) | 跳过渲染 (W4修复) | ✅ |
+| infoY 冷却位置 | hud.js (skill/rage/weapon) | canvas drawText | ✅ |
+| SKILL_INFO 映射 | screens.js (tooltip) | hover + ch.special | ✅ |
+
+### 关键问题修复
+
+**问题1: 角色选择页面仍为单行布局**
+- **现象**: `screens.js` drawCharSelect 仍使用 `const x = startX + i * (cardW + gap)` 单行排列，Dev-1 的 2x3 网格布局被 Dev-3 的修改覆盖
+- **修复**: 
+  - 改为 `const col = i % 3, row = Math.floor(i / 3)` 网格计算
+  - `cardH = 190` → `100`（2行总高=100+12+100=212 < 360）
+  - 卡片内容紧凑化：图标 40→24px，HP/速度合并一行
+  - 总宽=444 < 640，总高=212 < 360，全部可见
+- **文件**: `src/flow/screens.js` 第106-160行
+
+### 兼容性检查
+
+| 检查项 | 结果 | 说明 |
+|--------|------|------|
+| 火球拖尾 + 爆炸环兼容 | ✅ | 复用现有 particles/triggerShake 系统 |
+| 精灵光柱 + 精灵增强兼容 | ✅ | 复用 createParticle/particles，drawTurrets 中新增 elf 分支 |
+| 狂暴外观 + 无敌闪烁兼容 | ✅ | 颜色修改在 `c.globalAlpha = 1` 之前，闪烁全局透明度生效后渲染 |
+| HUD 冷却 + 波次进度条重叠 | ✅ | infoY(310) 在 wpY(311) 上方，skill text在左侧(pad=7)、wave text在居中(320)，不重叠 |
+| hover 技能提示 + 点击检测冲突 | ✅ | hover 使用同一 `hovered` 变量，只在渲染时添加 tooltip 覆盖层，不影响 click event 的 hovereds 数组 |
+| drawCharSelect 返回值一致性 | ✅ | 返回 `{ chars, startX, startY, cardW, cardH, gap, hovereds, ... }`，main.js 只使用 chars/hovereds/backHovered |
+
+### 验收检查
+- [x] 角色选择页6个角色全部以2×3网格可见 (总宽444<640, 总高212<360)
+- [x] 鼠标悬停和点击正确对应每个角色卡片 (hovered基于col/row计算)
+- [x] 法师火球飞行时有橙色拖尾 (每帧1-2个粒子)
+- [x] 火球爆炸时有环形火焰粒子 (10个均匀分布)
+- [x] 精灵召唤时有绿色光柱 (20个向上粒子)
+- [x] 精灵召唤物有发光光环 (rgba绿色arc) + 尺寸8×9
+- [x] 战士狂暴期间玩家变为红色 (#F44336) + 红色光晕
+- [x] W4冗余修复 (meleeWeapons.length > 0)
+- [x] 技能冷却与波次进度条不重叠 (不同水平位置)
+- [x] 角色选择页hover显示特殊技能提示
+- [x] 无死代码、无未定义变量
+- [x] 构建通过 (42 modules, 121.63 kB)
+
 ## 备注
 - 右键 contextmenu 已在 input.js 中默认阻止，无需额外添加
 - 近战音效使用 `audio.zombieHit()` 作为 Swing 音效替代
