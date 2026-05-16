@@ -470,44 +470,34 @@ export function updateTurrets(dt, zombies, bullets) {
       continue;
     }
 
-    // Elf: move toward nearest zombie
-    if (t.type === 'elf') {
-      let nearest = null, nearestDist = t.range * t.range;
-      for (const z of zombies) {
-        if (!z.alive) continue;
-        const dx = z.x - t.x, dy = z.y - t.y;
-        const d = dx * dx + dy * dy;
-        if (d < nearestDist) { nearestDist = d; nearest = z; }
-      }
-      if (nearest) {
-        const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
-        t.x = clamp(t.x + Math.cos(angle) * t.speed * dt, 10, IW - 10);
-        t.y = clamp(t.y + Math.sin(angle) * t.speed * dt, 10, IH - 10);
-      }
+    // Single pass: find nearest zombie (used for both elf movement and firing)
+    let nearest = null, nearestDist = t.range * t.range;
+    for (const z of zombies) {
+      if (!z.alive) continue;
+      const dx = z.x - t.x, dy = z.y - t.y;
+      const d = dx * dx + dy * dy;
+      if (d < nearestDist) { nearestDist = d; nearest = z; }
     }
 
-    // Find nearest zombie
+    // Elf: move toward nearest zombie
+    if (t.type === 'elf' && nearest) {
+      const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
+      t.x = clamp(t.x + Math.cos(angle) * t.speed * dt, 10, IW - 10);
+      t.y = clamp(t.y + Math.sin(angle) * t.speed * dt, 10, IH - 10);
+    }
+
+    // Fire at nearest zombie
     t.fireCooldown -= dt;
-    if (t.fireCooldown <= 0) {
-      let nearest = null, nearestDist = t.range * t.range;
-      for (const z of zombies) {
-        if (!z.alive) continue;
-        const dx = z.x - t.x, dy = z.y - t.y;
-        const d = dx * dx + dy * dy;
-        if (d < nearestDist) { nearestDist = d; nearest = z; }
-      }
-      if (nearest) {
-        const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
-        const speed = 500;
-        bullets.push({
-          x: t.x, y: t.y - 5,
-          vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-          damage: t.damage, penetrating: false, color: '#FF9800',
-          alive: true, trail: [], distanceTraveled: 0, maxDistance: t.range + 20,
-        });
-        t.fireCooldown = t.fireRate;
-        audio.shoot('smg');
-      }
+    if (t.fireCooldown <= 0 && nearest) {
+      const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
+      bullets.push({
+        x: t.x, y: t.y - 5,
+        vx: Math.cos(angle) * 500, vy: Math.sin(angle) * 500,
+        damage: t.damage, penetrating: false, color: '#FF9800',
+        alive: true, trail: [], distanceTraveled: 0, maxDistance: t.range + 20,
+      });
+      t.fireCooldown = t.fireRate;
+      audio.shoot('smg');
     }
   }
 }
