@@ -105,7 +105,7 @@ export function drawCharSelect(c, mouseX, mouseY) {
 
   const chars = Object.values(CHARACTERS);
   const cardW = 140;
-  const cardH = 100;
+  const cardH = 110;
   const gap = 12;
   const cols = 3;
   const totalW = cardW * cols + gap * (cols - 1);
@@ -140,7 +140,7 @@ export function drawCharSelect(c, mouseX, mouseY) {
     drawText(c, `伤害:${Math.round(ch.damageMult * 100)}%`, x + cardW / 2, y + 54, { size: FONT.TINY(), color: '#AAA', align: 'center' });
 
     // Description
-    drawText(c, ch.desc, x + cardW / 2, y + 65, { size: FONT.TINY(), color: '#888', align: 'center' });
+    drawText(c, ch.desc, x + cardW / 2, y + 60, { size: FONT.TINY(), color: '#888', align: 'center' });
 
     // Skill tooltip on hover
     if (hovered && ch.special) {
