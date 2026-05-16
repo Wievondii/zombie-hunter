@@ -8,7 +8,7 @@ import { bullets, acidProjectiles, updateBullet, updateAcid, drawBullet, drawAci
 import { pickups, updatePickups, drawPickup, clearPickups } from './entities/pickup.js';
 import { powerups, updatePowerups, drawPowerUp, clearPowerups } from './entities/powerup.js';
 import { hazards, createAcidPool, createBarrel, updateHazards, drawHazard, clearHazards } from './entities/hazard.js';
-import { particles, floatingTexts, updateParticlesAndTexts, drawParticle, drawBloodPools, updateBloodPools, spawnParticles, clearAll } from './systems/particles.js';
+import { particles, floatingTexts, updateParticlesAndTexts, drawParticle, drawBloodPools, updateBloodPools, spawnParticles, createParticle, clearAll } from './systems/particles.js';
 import { SpatialGrid } from './systems/spatial-grid.js';
 import { comboSystem } from './systems/combo.js';
 import { initLighting, addLight, drawLighting } from './systems/lighting.js';
@@ -453,7 +453,22 @@ function updateGame(dt) {
     const zr = tileMap.resolveCollision(z.x, z.y, z.size / 2);
     z.x = zr.x; z.y = zr.y;
   }
-  for (const b of bullets) { if (b.alive) { updateBullet(b, dt); if (b.alive && tileMap.isWall(b.x, b.y)) b.alive = false; } }
+  for (const b of bullets) {
+    if (b.alive) {
+      updateBullet(b, dt);
+      // Fireball trail: 1-2 orange particles per frame for explosive bullets
+      if (b.alive && b.explosive) {
+        const tc = 1 + Math.floor(Math.random() * 2); // 1-2
+        for (let i = 0; i < tc; i++) {
+          const angle = Math.random() * PI2;
+          const spd = 20 + Math.random() * 30;
+          const color = ['#FF6F00', '#FF9800', '#FF5722'][Math.floor(Math.random() * 3)];
+          particles.push(createParticle(b.x, b.y, Math.cos(angle) * spd, Math.sin(angle) * spd, color, 0.2, 1.5));
+        }
+      }
+      if (b.alive && tileMap.isWall(b.x, b.y)) b.alive = false;
+    }
+  }
   for (const a of acidProjectiles) { if (a.alive) { updateAcid(a, dt); if (a.alive && tileMap.isWall(a.x, a.y)) a.alive = false; } }
 
   // Spatial grid
@@ -475,8 +490,15 @@ function updateGame(dt) {
           // Explosive bullet: damage nearby zombies
           if (b.explosive) {
             const radius = b.explosionRadius || 50;
-            audio.explosion(); triggerShake(6, 0.2);
+            audio.explosion(); triggerShake(5, 0.15);
             spawnParticles(b.x, b.y, 20, ['#FF5722', '#FF9800', '#FFEB3B', '#FFF'], 200, 0.4, 3);
+            // Ring explosion effect: 10 particles in a ring formation
+            for (let i = 0; i < 10; i++) {
+              const ringAngle = (i / 10) * PI2;
+              const ringSpd = 120 + Math.random() * 60;
+              const ringColor = ['#FF4500', '#FF6F00', '#FFD700'][Math.floor(Math.random() * 3)];
+              particles.push(createParticle(b.x, b.y, Math.cos(ringAngle) * ringSpd, Math.sin(ringAngle) * ringSpd, ringColor, 0.35, 2.5));
+            }
             addLight(b.x, b.y, radius * 2, '#FF5722', 0.5);
             for (const oz of zombies) {
               if (!oz.alive || oz === z) continue;

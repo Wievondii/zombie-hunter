@@ -241,7 +241,7 @@ export function drawHUD(c, player, gameTime, score, kills) {
   });
 
   // ---- Melee weapon slots (right of gun weapons) ----
-  if (meleeWeapons && meleeWeapons.length > 0) {
+  if (meleeWeapons.length > 0) {
     const mwStartX = wStartX + displayWeapons.length * (slotW + 4) + 6;
     const mwNameSize = FONT.SMALL();
     const mwSubSize = FONT.TINY();
@@ -272,7 +272,7 @@ export function drawHUD(c, player, gameTime, score, kills) {
   }
 
   // ---- Skill cooldown (left side above weapon bar) ----
-  const infoY = wbY - smallSize - 4;
+  const infoY = wbY - smallSize - 12;
   if (player.special) {
     const cd = player.abilityCooldown;
     const cdText = cd > 0 ? `技能冷却: ${cd.toFixed(1)}s` : '技能: 就绪';

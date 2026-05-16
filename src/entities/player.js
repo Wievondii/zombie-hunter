@@ -90,16 +90,20 @@ export class Player {
         this.armorMult = this._originalArmorMult ?? this.armorMult;
         this.meleeDamageMult = 1.0;
       } else {
-        // Red particles around player during rage
-        if (Math.random() < 0.4) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 12 + Math.random() * 8;
-          spawnParticles(
+        // Red glow particles around player during rage (2-3 per frame)
+        const gc = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < gc; i++) {
+          const angle = Math.random() * PI2;
+          const dist = 14 + Math.random() * 10;
+          const color = ['#F44336', '#FF5252', '#FF8A80', '#FF0000'][Math.floor(Math.random() * 4)];
+          const p = createParticle(
             this.x + Math.cos(angle) * dist,
             this.y + Math.sin(angle) * dist,
-            1, ['#F44336', '#FF5252', '#D32F2F', '#FF0000'],
-            100, 0.25, 1.5
+            Math.cos(angle) * 30,
+            Math.sin(angle) * 30,
+            color, 0.25 + Math.random() * 0.15, 1.8 + Math.random() * 0.5
           );
+          particles.push(p);
         }
       }
     }
@@ -245,7 +249,20 @@ export class Player {
       });
       this.abilityCooldown = this.abilityMaxCooldown;
       audio.purchase();
-      spawnParticles(this.x, this.y, 12, ['#4CAF50', '#81C784', '#A5D6A7', '#FFF'], 120, 0.3, 2);
+      // Green pillar effect: 20 upward particles
+      for (let i = 0; i < 20; i++) {
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+        const spd = 60 + Math.random() * 100;
+        const color = ['#4CAF50', '#81C784', '#A5D6A7', '#FFF'][Math.floor(Math.random() * 4)];
+        const p = createParticle(
+          this.x + (Math.random() - 0.5) * 16,
+          this.y,
+          Math.cos(angle) * spd,
+          Math.sin(angle) * spd - 30,
+          color, 0.4 + Math.random() * 0.3, 2 + Math.random()
+        );
+        particles.push(p);
+      }
       triggerShake(2, 0.1);
     } else if (this.special === 'warrior_rage') {
       // Warrior rage: damage reduction + melee damage buff
@@ -374,12 +391,21 @@ export class Player {
     c.fillRect(px - 5, py + 1 + wc * 0.5, 4, 3);
     c.fillRect(px + 1, py + 1 - wc * 0.5, 4, 3);
 
-    // Body
-    c.fillStyle = '#4A90D9'; c.fillRect(px - 5, py - 4, 10, 7);
-    c.fillStyle = '#2C5F8A'; c.fillRect(px - 5, py - 4, 10, 1); c.fillRect(px - 5, py + 1, 10, 1);
-
-    // Belt
-    c.fillStyle = '#8B6914'; c.fillRect(px - 5, py + 2, 10, 2);
+    // Body (red when rage active)
+    if (this.rageActive) {
+      c.fillStyle = '#F44336'; c.fillRect(px - 5, py - 4, 10, 7);
+      c.fillStyle = '#D32F2F'; c.fillRect(px - 5, py - 4, 10, 1); c.fillRect(px - 5, py + 1, 10, 1);
+      // Belt
+      c.fillStyle = '#FF5722'; c.fillRect(px - 5, py + 2, 10, 2);
+      // Red aura glow
+      c.fillStyle = 'rgba(244,67,54,0.15)';
+      c.fillRect(px - 8, py - 8, 16, 16);
+    } else {
+      c.fillStyle = '#4A90D9'; c.fillRect(px - 5, py - 4, 10, 7);
+      c.fillStyle = '#2C5F8A'; c.fillRect(px - 5, py - 4, 10, 1); c.fillRect(px - 5, py + 1, 10, 1);
+      // Belt
+      c.fillStyle = '#8B6914'; c.fillRect(px - 5, py + 2, 10, 2);
+    }
 
     // Head (directional)
     if (this.anim.isUp) {
@@ -492,35 +518,38 @@ export function drawTurrets(c) {
 
     // Elf summon: green pixie archer
     if (t.type === 'elf') {
-      // Glow
+      // Green glow circle
+      c.fillStyle = 'rgba(76,175,80,0.2)';
+      c.beginPath(); c.arc(px, py, 12, 0, PI2); c.fill();
+      // Inner glow
       c.fillStyle = 'rgba(76,175,80,0.15)';
-      c.fillRect(px - 6, py - 6, 12, 12);
-      // Wings
+      c.fillRect(px - 7, py - 7, 14, 14);
+      // Wings (extended for 8x9 body)
       c.fillStyle = '#A5D6A7';
-      c.fillRect(px - 6, py - 2, 3, 5);
-      c.fillRect(px + 3, py - 2, 3, 5);
-      // Body
+      c.fillRect(px - 7, py - 2, 3, 5);
+      c.fillRect(px + 4, py - 2, 3, 5);
+      // Body (8x9)
       c.fillStyle = '#4CAF50';
-      c.fillRect(px - 3, py - 3, 6, 7);
+      c.fillRect(px - 4, py - 4, 8, 9);
       // Head
       c.fillStyle = '#81C784';
-      c.fillRect(px - 3, py - 6, 6, 4);
+      c.fillRect(px - 4, py - 7, 8, 4);
       // Eyes
       c.fillStyle = '#FFF';
-      c.fillRect(px - 2, py - 5, 1, 1);
-      c.fillRect(px + 1, py - 5, 1, 1);
+      c.fillRect(px - 2, py - 6, 1, 1);
+      c.fillRect(px + 1, py - 6, 1, 1);
       // Hair
       c.fillStyle = '#2E7D32';
-      c.fillRect(px - 4, py - 7, 8, 1);
-      c.fillRect(px - 3, py - 8, 6, 1);
+      c.fillRect(px - 5, py - 8, 10, 1);
+      c.fillRect(px - 4, py - 9, 8, 1);
       // Bow
       c.fillStyle = '#8D6E63';
-      c.fillRect(px + 3, py - 4, 2, 6);
+      c.fillRect(px + 4, py - 4, 2, 6);
       // HP bar
       if (t.hp < t.maxHp) {
-        const hpW = 10, hpH = 2;
-        c.fillStyle = '#333'; c.fillRect(px - hpW / 2, py - 10, hpW, hpH);
-        c.fillStyle = '#4CAF50'; c.fillRect(px - hpW / 2, py - 10, (hpW * t.hp / t.maxHp) | 0, hpH);
+        const hpW = 12, hpH = 2;
+        c.fillStyle = '#333'; c.fillRect(px - hpW / 2, py - 12, hpW, hpH);
+        c.fillStyle = '#4CAF50'; c.fillRect(px - hpW / 2, py - 12, (hpW * t.hp / t.maxHp) | 0, hpH);
       }
       continue; // Skip regular turret draw
     }
