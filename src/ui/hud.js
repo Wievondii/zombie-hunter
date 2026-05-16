@@ -272,7 +272,7 @@ export function drawHUD(c, player, gameTime, score, kills) {
   }
 
   // ---- Skill cooldown (left side above weapon bar) ----
-  const infoY = wbY - smallSize - 12;
+  const infoY = wbY - smallSize - 24;
   if (player.special) {
     const cd = player.abilityCooldown;
     const cdText = cd > 0 ? `技能冷却: ${cd.toFixed(1)}s` : '技能: 就绪';

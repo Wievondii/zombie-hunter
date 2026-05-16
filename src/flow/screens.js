@@ -142,8 +142,8 @@ export function drawCharSelect(c, mouseX, mouseY) {
     // Description
     drawText(c, ch.desc, x + cardW / 2, y + 65, { size: FONT.TINY(), color: '#888', align: 'center' });
 
-    // Skill tooltip (always visible if character has special ability)
-    if (ch.special) {
+    // Skill tooltip on hover
+    if (hovered && ch.special) {
       const si = SKILL_INFO[ch.special];
       if (si) {
         const ttY = y + cardH - 2;
